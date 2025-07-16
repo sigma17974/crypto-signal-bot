@@ -481,7 +481,7 @@ class AdminDashboard:
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Admin Login - Crypto Sniper Pro Bot</title>
+            <title>Admin Login - CryptoSniperXProBot</title>
             <style>
                 body {
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -562,7 +562,7 @@ class AdminDashboard:
             <div class="login-container">
                 <div class="login-header">
                     <h1>🔐 Admin Login</h1>
-                    <p>Crypto Sniper Pro Bot</p>
+                    <p>CryptoSniperXProBot</p>
                 </div>
                 <form method="POST">
                     <div class="form-group">
@@ -591,7 +591,7 @@ class AdminDashboard:
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Admin Dashboard - Crypto Sniper Pro Bot</title>
+            <title>Admin Dashboard - CryptoSniperXProBot</title>
             <style>
                 body {
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -808,7 +808,7 @@ class AdminDashboard:
         <body>
             <div class="header">
                 <div class="header-content">
-                    <h1>🚀 Crypto Sniper Pro Bot - Admin Dashboard</h1>
+                    <h1>🚀 CryptoSniperXProBot - Admin Dashboard</h1>
                     <div class="header-actions">
                         <button class="btn btn-primary" onclick="refreshData()">🔄 Refresh</button>
                         <a href="/logout" class="btn btn-danger">Logout</a>

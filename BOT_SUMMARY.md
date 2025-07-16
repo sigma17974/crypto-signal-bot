@@ -1,10 +1,10 @@
-# 🤖 Crypto Sniper Pro Bot - Complete Feature Summary
+# 🤖 CryptoSniperXProBot - Complete Feature Summary
 
 ## 🎯 **Bot Identity**
-- **Name**: Crypto Sniper Pro Bot
-- **Version**: 2.0.0
-- **Username**: `crypto_sniper_pro_bot`
-- **Description**: Advanced Crypto Trading Bot with Real-time Sniper Entry Detection
+- **Name**: CryptoSniperXProBot
+- **Version**: 2.1.0
+- **Username**: `cryptosniperxpro_bot`
+- **Description**: Advanced Crypto Trading Bot with Real-time Sniper Entry Detection and X-Pro Features
 
 ---
 
@@ -51,7 +51,10 @@
 - **Win Rate Calculation**
 
 ### 🌐 **Web Interface**
-- **Beautiful Admin Dashboard** with real-time stats
+- **Advanced Admin Dashboard** with real-time monitoring
+- **Telegram Authentication** for secure access
+- **Auto-reconnect & Auto-cleanup** systems
+- **Error Detection & Auto-repair** mechanisms
 - **Performance Analytics** with charts
 - **Signal History** with detailed information
 - **System Status** monitoring
@@ -59,8 +62,14 @@
 
 ### 📡 **REST API Endpoints**
 - `/` - Bot status
-- `/admin` - Enhanced dashboard
+- `/admin` - Advanced dashboard with authentication
+- `/admin/login` - Secure login page
 - `/api/status` - JSON status data
+- `/api/telegram-test` - Test Telegram connection
+- `/api/auto-reconnect/toggle` - Toggle auto-reconnect
+- `/api/auto-cleanup/toggle` - Toggle auto-cleanup
+- `/api/force-cleanup` - Manual cleanup
+- `/api/force-reconnect` - Manual reconnect
 - `/signals` - Recent signals
 - `/performance` - Performance stats
 - `/signals/history` - Signal history
@@ -146,14 +155,17 @@ python main.py
 ## 📁 **File Structure**
 
 ```
-crypto-sniper-bot/
+cryptosniperxpro-bot/
 ├── main.py                 # Core bot logic
 ├── config.py              # Configuration management
 ├── utils.py               # Technical analysis utilities
 ├── performance.py         # Performance tracking
-├── admin_panel.py        # Enhanced web interface
+├── admin_dashboard.py     # Advanced admin dashboard
+├── admin_panel.py        # Legacy web interface
+├── setup_admin.py        # Admin dashboard setup
 ├── setup_telegram.py     # Interactive Telegram setup
 ├── quick_setup.py        # Menu-driven setup
+├── test_admin.py         # Admin dashboard testing
 ├── test_bot.py           # System testing
 ├── requirements.txt       # Dependencies
 ├── .env.example          # Environment template
@@ -168,10 +180,12 @@ crypto-sniper-bot/
 ## 🌐 **Web Interface Features**
 
 ### 📊 **Dashboard Sections**
-1. **Real-time Statistics** - Live bot metrics
-2. **Recent Signals** - Latest trading signals
-3. **Performance Analytics** - Best performing symbols
-4. **System Status** - Bot health and monitoring
+1. **Real-time Statistics** - Live bot metrics with health scoring
+2. **System Controls** - Auto-reconnect, auto-cleanup, manual controls
+3. **Telegram Connection** - Connection status and testing
+4. **Error Monitoring** - System errors and auto-repair
+5. **Performance Analytics** - Best performing symbols
+6. **System Status** - Bot health and monitoring
 
 ### 📈 **Performance Charts**
 - **Accuracy Trends** over time

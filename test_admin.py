@@ -174,7 +174,7 @@ def test_web_interface():
 def main():
     """Main test function"""
     
-    print("🚀 Crypto Sniper Pro Bot - Admin Dashboard Test")
+    print("🚀 CryptoSniperXProBot - Admin Dashboard Test")
     print("=" * 50)
     
     # Test admin dashboard functionality

@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 def setup_admin_dashboard():
     """Setup admin dashboard with Telegram authentication"""
     
-    print("🚀 Crypto Sniper Pro Bot - Admin Dashboard Setup")
+    print("🚀 CryptoSniperXProBot - Admin Dashboard Setup")
     print("=" * 50)
     
     # Load existing environment variables
@@ -152,7 +152,7 @@ try:
     from admin_dashboard import AdminDashboard
     from main import CryptoSniperBot
     
-    print("🚀 Starting Crypto Sniper Pro Bot with Admin Dashboard...")
+    print("🚀 Starting CryptoSniperXProBot with Admin Dashboard...")
     
     # Initialize bot
     bot = CryptoSniperBot()

@@ -1,6 +1,6 @@
-# 🚀 Crypto Sniper Bot
+# 🚀 CryptoSniperXProBot
 
-**Advanced Crypto Trading Bot** - Real-time market analysis, sniper entry detection, and automated signal generation powered by AI and institutional-grade technical analysis.
+**Advanced Crypto Trading Bot** - Real-time market analysis, sniper entry detection, and automated signal generation powered by AI and institutional-grade technical analysis with X-Pro features.
 
 ---
 
@@ -25,7 +25,7 @@
 - **Multiple Signal Types** (LONG/SHORT)
 - **Risk Warning Messages**
 
-### 🛠 **Advanced Features**
+### 🛠 **X-Pro Advanced Features**
 - **16+ Trading Pairs** monitored simultaneously
 - **Data Validation** and cleaning
 - **Advanced Admin Dashboard** with real-time monitoring
@@ -33,6 +33,7 @@
 - **Error Detection & Auto-repair** mechanisms
 - **REST API** for signal access
 - **24/7 Uptime** with Railway deployment
+- **X-Pro Signal Enhancement** with AI-powered analysis
 
 ---
 
@@ -214,7 +215,7 @@ VOLUME_SPIKE_THRESHOLD = 2.0  # 2x average volume
 
 ### **Signal Format**
 ```
-🚀 CRYPTO SNIPER SIGNAL 🚀
+🚀 CRYPTOSNIPERXPRO SIGNAL 🚀
 
 🎯 Symbol: BTC/USDT
 📊 Direction: LONG
@@ -375,4 +376,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**🚀 Happy Trading! May your signals be profitable! 🚀**
+**🚀 Happy Trading! May your X-Pro signals be profitable! 🚀**

@@ -9,8 +9,8 @@ class Config:
     """Bot configuration settings"""
     
     # === BOT IDENTITY ===
-    BOT_NAME = "Crypto Sniper Pro Bot"
-    BOT_VERSION = "2.0.0"
+    BOT_NAME = "CryptoSniperXProBot"
+    BOT_VERSION = "2.1.0"
     BOT_DESCRIPTION = "Advanced Crypto Trading Bot with Real-time Sniper Entry Detection"
     
     # === TELEGRAM SETTINGS ===

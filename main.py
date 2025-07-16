@@ -344,7 +344,7 @@ class CryptoSniperBot:
             signal_emojis = [emoji_map.get(s, "•") for s in signal['signals']]
             
             message = f"""
-{direction_emoji} **CRYPTO SNIPER SIGNAL** {direction_emoji}
+{direction_emoji} **CRYPTOSNIPERXPRO SIGNAL** {direction_emoji}
 
 🎯 **Symbol:** {signal['symbol']}
 📊 **Direction:** {signal['direction']}
