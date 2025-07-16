@@ -17,6 +17,12 @@ GAS_MULTIPLIER = float(os.getenv("GAS_MULTIPLIER", "1.2"))
 # Poll interval (seconds) for price/liquidity watcher
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "3"))
 
+# Router (PancakeSwap v2 on BSC) – override with env var if needed
+ROUTER_ADDRESS = os.getenv("ROUTER_ADDRESS", "0x10ED43C718714eb63d5aA57B78B54704E256024E")
+
+# Wrapped native token (WBNB for BSC)
+WRAPPED_NATIVE = os.getenv("WRAPPED_NATIVE", "0xBB4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c")
+
 # Example targets – replace with real pair addresses & parameters
 # Each dict must contain at minimum:
 #   pair:   PancakeSwap/UniswapV2 pair address
