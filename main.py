@@ -4,7 +4,8 @@ import time, os, asyncio
 from apscheduler.schedulers.background import BackgroundScheduler
 import requests
 import random
-from sniper.scanner import DummyScanner
+# Select scanner implementation
+from sniper.scanner import PairWatcherScanner
 from sniper.trader import Trader
 
 app = Flask(__name__)
@@ -60,7 +61,7 @@ Thread(target=run).start()
 async def orchestrator():
     """Coordinates scanner and trader pipelines."""
     queue: asyncio.Queue = asyncio.Queue()
-    scanner = DummyScanner(queue)
+    scanner = PairWatcherScanner(queue)
     trader = Trader()
 
     # Launch scanner as a background task

@@ -14,5 +14,26 @@ WALLET_ADDRESS = (
 # Gas price multiplier applied to current network gas price
 GAS_MULTIPLIER = float(os.getenv("GAS_MULTIPLIER", "1.2"))
 
-# Targets list will be filled with dictionaries that describe each snipe config
-TARGETS: list[dict] = []
+# Poll interval (seconds) for price/liquidity watcher
+POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "3"))
+
+# Example targets – replace with real pair addresses & parameters
+# Each dict must contain at minimum:
+#   pair:   PancakeSwap/UniswapV2 pair address
+#   trigger_price: price of base token in quote token units at which to trigger
+#   amount_in: amount of quote token to spend when triggered
+# Optional:
+#   min_liquidity: minimum total liquidity (quote-token units) required
+#   direction: "BUY" (<= trigger_price) or "SELL" (>= trigger_price)
+TARGETS: list[dict] = [
+    {
+        "name": "Example BNB/USDT",
+        "pair": "0x0000000000000000000000000000000000000000",  # TODO: real address
+        "base_token": "0x0000000000000000000000000000000000000000",  # WBNB
+        "quote_token": "0x0000000000000000000000000000000000000000",  # USDT
+        "trigger_price": 500.0,
+        "amount_in": 0.1,
+        "min_liquidity": 10000.0,
+        "direction": "BUY",
+    }
+]
