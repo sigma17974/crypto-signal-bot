@@ -47,11 +47,30 @@ cd crypto-sniper-bot
 pip install -r requirements.txt
 ```
 
-### 3. **Configure Environment**
+### 3. **Setup Options**
+
+**Option A - Interactive Setup (Recommended):**
 ```bash
+python quick_setup.py
+```
+This provides a menu-driven interface for easy setup.
+
+**Option B - Step-by-Step Setup:**
+```bash
+# Create environment file
 cp .env.example .env
+
+# Setup Telegram (interactive)
+python setup_telegram.py
+
+# Test everything
+python test_bot.py
+
+# Start the bot
+python main.py
 ```
 
+**Option C - Manual Setup:**
 Edit `.env` with your credentials:
 ```env
 # Telegram Configuration (Required)
@@ -67,18 +86,34 @@ PORT=5000
 LOG_LEVEL=INFO
 ```
 
-### 4. **Get Telegram Bot Token**
+### 4. **Setup Telegram Bot (Choose One)**
+
+**Option A - Interactive Setup (Recommended):**
+```bash
+python setup_telegram.py
+```
+This will guide you through creating a bot and getting your chat ID automatically.
+
+**Option B - Quick Setup Menu:**
+```bash
+python quick_setup.py
+```
+Provides a menu-driven interface for all setup options.
+
+**Option C - Manual Setup:**
 1. Message [@BotFather](https://t.me/botfather) on Telegram
 2. Create new bot: `/newbot`
 3. Copy the token to `TELEGRAM_TOKEN`
+4. Message your bot
+5. Visit: `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates`
+6. Copy `chat_id` to `TELEGRAM_CHAT_ID`
 
-### 5. **Get Chat ID**
-1. Message your bot
-2. Visit: `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates`
-3. Copy `chat_id` to `TELEGRAM_CHAT_ID`
-
-### 6. **Run Bot**
+### 5. **Test & Run**
 ```bash
+# Test everything
+python test_bot.py
+
+# Start the bot
 python main.py
 ```
 

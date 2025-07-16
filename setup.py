@@ -73,23 +73,27 @@ MIN_RISK_REWARD_RATIO=2.0
 def get_telegram_help():
     """Show Telegram setup help"""
     print("""
-📱 Telegram Setup Instructions:
-==============================
+📱 Telegram Setup Options:
+==========================
 
-1. Create a Telegram bot:
-   - Message @BotFather on Telegram
-   - Send /newbot
-   - Choose a name for your bot
-   - Choose a username (must end with 'bot')
-   - Copy the token to TELEGRAM_TOKEN in .env
+Option 1 - Interactive Setup (Recommended):
+   python setup_telegram.py
 
-2. Get your Chat ID:
-   - Message your bot
-   - Visit: https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates
-   - Copy the 'chat_id' to TELEGRAM_CHAT_ID in .env
+Option 2 - Manual Setup:
+   1. Create a Telegram bot:
+      - Message @BotFather on Telegram
+      - Send /newbot
+      - Choose a name for your bot
+      - Choose a username (must end with 'bot')
+      - Copy the token to TELEGRAM_TOKEN in .env
 
-3. Test the connection:
-   - Run: python test_bot.py
+   2. Get your Chat ID:
+      - Message your bot
+      - Visit: https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates
+      - Copy the 'chat_id' to TELEGRAM_CHAT_ID in .env
+
+   3. Test the connection:
+      - Run: python test_bot.py
 """)
 
 def run_tests():
