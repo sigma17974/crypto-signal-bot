@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify
 from threading import Thread
-import time, os
+import time, os, asyncio
 from apscheduler.schedulers.background import BackgroundScheduler
 import requests
 import random
+# Select scanner implementation
+from sniper.scanner import PairWatcherScanner
+from sniper.trader import Trader
 
 app = Flask(__name__)
 
@@ -51,5 +54,28 @@ def run():
 Thread(target=run).start()
 
 # Keep main thread alive
-while True:
-    time.sleep(60)
+
+
+# === SNIPER ORCHESTRATOR ===
+
+async def orchestrator():
+    """Coordinates scanner and trader pipelines."""
+    queue: asyncio.Queue = asyncio.Queue()
+    scanner = PairWatcherScanner(queue)
+    trader = Trader()
+
+    # Launch scanner as a background task
+    scanner_task = asyncio.create_task(scanner.start())
+
+    try:
+        while True:
+            target = await queue.get()
+            await trader.execute(target)
+    except asyncio.CancelledError:
+        # Graceful shutdown
+        scanner.stop()
+        await scanner_task
+
+
+# Kick off orchestrator in main thread
+asyncio.run(orchestrator())
