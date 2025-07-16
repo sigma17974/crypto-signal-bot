@@ -28,7 +28,9 @@
 ### 🛠 **Advanced Features**
 - **16+ Trading Pairs** monitored simultaneously
 - **Data Validation** and cleaning
-- **Web Admin Panel** for monitoring
+- **Advanced Admin Dashboard** with real-time monitoring
+- **Auto-reconnect & Auto-cleanup** systems
+- **Error Detection & Auto-repair** mechanisms
 - **REST API** for signal access
 - **24/7 Uptime** with Railway deployment
 
@@ -74,8 +76,11 @@ python main.py
 Edit `.env` with your credentials:
 ```env
 # Telegram Configuration (Required)
-TELEGRAM_TOKEN=your_telegram_bot_token_here
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 TELEGRAM_CHAT_ID=your_telegram_chat_id_here
+
+# Admin Dashboard (Required)
+ADMIN_SECRET_KEY=your_admin_secret_key_here
 
 # Binance API (Optional - for real trading)
 BINANCE_API_KEY=your_binance_api_key_here
@@ -108,7 +113,16 @@ Provides a menu-driven interface for all setup options.
 5. Visit: `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates`
 6. Copy `chat_id` to `TELEGRAM_CHAT_ID`
 
-### 5. **Test & Run**
+### 5. **Setup Admin Dashboard (Optional but Recommended)**
+```bash
+# Setup admin dashboard with Telegram authentication
+python setup_admin.py
+
+# Start bot with admin dashboard
+python start_admin.py
+```
+
+### 6. **Test & Run**
 ```bash
 # Test everything
 python test_bot.py
@@ -170,9 +184,21 @@ VOLUME_SPIKE_THRESHOLD = 2.0  # 2x average volume
 
 ## 🌐 Web Interface
 
-### **Admin Panel**
+### **Admin Dashboard** (New!)
 - **URL**: `http://localhost:5000/admin`
-- **Features**: Bot status, signal count, monitored pairs
+- **Login**: Use your Telegram bot token and chat ID
+- **Features**: 
+  - Real-time bot status monitoring
+  - Telegram connection management
+  - Auto-reconnect and auto-cleanup controls
+  - Error detection and auto-repair
+  - Performance tracking and analytics
+  - System health monitoring
+  - Signal history and statistics
+
+### **Legacy Admin Panel**
+- **URL**: `http://localhost:5000/admin_panel`
+- **Features**: Basic bot status, signal count, monitored pairs
 
 ### **Signals API**
 - **URL**: `http://localhost:5000/signals`
@@ -227,6 +253,39 @@ RUN pip install -r requirements.txt
 COPY . .
 CMD ["python", "main.py"]
 ```
+
+---
+
+## 🎛️ Admin Dashboard Features
+
+### **🔐 Secure Authentication**
+- **Telegram-based Login**: Use your bot token and chat ID
+- **Session Management**: Secure admin sessions
+- **Auto-logout**: Automatic session timeout
+
+### **📊 Real-time Monitoring**
+- **Bot Status**: Live bot health monitoring
+- **Telegram Connection**: Connection status and testing
+- **System Health**: Overall system health score (0-100%)
+- **Performance Metrics**: Uptime, signals generated, error count
+
+### **🔄 Auto-Management Systems**
+- **Auto-Reconnect**: Automatically reconnects to Telegram on disconnection
+- **Auto-Cleanup**: Cleans old logs and data automatically
+- **Error Detection**: Monitors for system errors and alerts
+- **Auto-Repair**: Automatically attempts to fix common issues
+
+### **🎛️ Manual Controls**
+- **Force Reconnect**: Manually trigger reconnection
+- **Force Cleanup**: Manually trigger system cleanup
+- **Telegram Test**: Test Telegram connection
+- **Toggle Systems**: Enable/disable auto-management features
+
+### **📈 Performance Analytics**
+- **Signal History**: Track all generated signals
+- **Error Logging**: Monitor system errors and warnings
+- **System Statistics**: Uptime, performance metrics
+- **Health Scoring**: Real-time system health assessment
 
 ---
 

@@ -1,4 +1,5 @@
 flask
+flask-login
 apscheduler
 requests
 python-binance
@@ -8,3 +9,5 @@ pandas
 numpy
 websocket-client
 python-dotenv
+python-telegram-bot
+psutil

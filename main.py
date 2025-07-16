@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 from config import Config
 from utils import TechnicalAnalysis, SignalGenerator, DataValidator
 from performance import PerformanceTracker, PerformanceAnalyzer
-from admin_panel import AdminPanel
+from admin_dashboard import AdminDashboard
 
 # Load environment variables
 load_dotenv()
@@ -66,6 +66,11 @@ class CryptoSniperBot:
         
         # Signal tracking
         self.signal_cooldowns = {}  # Track signal cooldowns per symbol
+        self.signal_count = 0  # Track total signals generated
+        
+        # Bot health tracking
+        self.is_running = True
+        self.start_time = datetime.now()
         
         # Initialize bot
         self._setup_routes()
@@ -88,8 +93,8 @@ class CryptoSniperBot:
     
     def _setup_routes(self):
         """Setup Flask routes"""
-        # Initialize admin panel
-        self.admin_panel = AdminPanel(self)
+        # Initialize admin dashboard
+        self.admin_dashboard = AdminDashboard(self)
         
         @self.app.route("/")
         def ping():
@@ -97,11 +102,19 @@ class CryptoSniperBot:
         
         @self.app.route("/admin")
         def admin():
-            return self.admin_panel.render_dashboard()
+            return redirect("/admin/login")
+        
+        @self.app.route("/admin/login")
+        def admin_login():
+            return self.admin_dashboard._render_login_page()
+        
+        @self.app.route("/admin/dashboard")
+        def admin_dashboard():
+            return self.admin_dashboard._render_dashboard()
         
         @self.app.route("/api/status")
         def api_status():
-            return jsonify(self.admin_panel.get_api_data())
+            return jsonify(self.admin_dashboard._get_system_status())
         
         @self.app.route("/signals")
         def get_signals():
@@ -296,6 +309,7 @@ class CryptoSniperBot:
                         
                         if signal:
                             self.signals.append(signal)
+                            self.signal_count += 1
                             
                             # Record signal in performance tracker
                             if Config.ENABLE_PERFORMANCE_TRACKING:
