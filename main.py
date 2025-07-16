@@ -209,32 +209,40 @@ class CryptoSniperBot:
             symbol = sniper_data['symbol']
             price = sniper_data['price']
             
-            # Calculate stop loss and take profit
-            if "BULLISH" in str(sniper_data['signals']) or "RESISTANCE_BREAK" in sniper_data['signals']:
+            # Get ATR for dynamic risk calculation
+            df = self.market_data[symbol][sniper_data['timeframe']]
+            atr = df['atr'].iloc[-1] if 'atr' in df.columns else price * 0.02
+            
+            # Determine direction based on signals
+            bullish_signals = ["RSI_OVERSOLD_REVERSAL", "MACD_BULLISH_CROSS", "GOLDEN_CROSS", 
+                              "BB_SQUEEZE_BREAKOUT", "VOLUME_SPIKE_MOMENTUM", "RESISTANCE_BREAK", 
+                              "STOCH_OVERSOLD_REVERSAL", "VWAP_BOUNCE"]
+            
+            if any(signal in sniper_data['signals'] for signal in bullish_signals):
                 direction = "LONG"
-                stop_loss = price * 0.98  # 2% below entry
-                take_profit = price * 1.04  # 4% above entry
             else:
                 direction = "SHORT"
-                stop_loss = price * 1.02  # 2% above entry
-                take_profit = price * 0.96  # 4% below entry
             
-            risk_reward = self.calculate_risk_reward(price, stop_loss, take_profit)
+            # Calculate dynamic risk levels using ATR
+            risk_levels = SignalGenerator.calculate_risk_levels(price, atr, direction)
             
-            # Only generate signal if risk-reward ratio is acceptable
-            if risk_reward['ratio'] >= self.min_risk_reward_ratio:
+            # Only generate signal if risk-reward ratio is acceptable and confidence is high enough
+            if (risk_levels.get('ratio', 0) >= self.min_risk_reward_ratio and 
+                sniper_data.get('confidence', 0) >= Config.MIN_CONFIDENCE):
+                
                 signal = {
                     "id": f"signal_{int(time.time())}",
                     "symbol": symbol,
                     "direction": direction,
                     "entry_price": price,
-                    "stop_loss": stop_loss,
-                    "take_profit": take_profit,
-                    "risk_reward": risk_reward,
+                    "stop_loss": risk_levels['stop_loss'],
+                    "take_profit": risk_levels['take_profit'],
+                    "risk_reward": risk_levels,
                     "signals": sniper_data['signals'],
                     "timestamp": sniper_data['timestamp'],
                     "timeframe": sniper_data['timeframe'],
-                    "confidence": len(sniper_data['signals']) * 20  # Higher confidence with more signals
+                    "confidence": sniper_data.get('confidence', 0),
+                    "strength": sniper_data.get('strength', 'MEDIUM')
                 }
                 
                 return signal
@@ -323,12 +331,12 @@ class CryptoSniperBot:
     def cleanup_old_data(self):
         """Clean up old market data and signals"""
         try:
-            # Keep only last 100 signals
-            if len(self.signals) > 100:
-                self.signals = self.signals[-100:]
+            # Keep only last N signals
+            if len(self.signals) > Config.MAX_SIGNALS_STORED:
+                self.signals = self.signals[-Config.MAX_SIGNALS_STORED:]
             
-            # Clean up old market data (keep last 24 hours)
-            cutoff_time = datetime.now() - timedelta(hours=24)
+            # Clean up old market data
+            cutoff_time = datetime.now() - timedelta(hours=Config.MARKET_DATA_RETENTION_HOURS)
             for symbol in self.market_data:
                 for timeframe in self.market_data[symbol]:
                     df = self.market_data[symbol][timeframe]
@@ -345,7 +353,7 @@ class CryptoSniperBot:
         try:
             # Start Flask app in a separate thread
             def run_flask():
-                self.app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+                self.app.run(host=Config.HOST, port=Config.PORT)
             
             flask_thread = threading.Thread(target=run_flask)
             flask_thread.daemon = True
@@ -353,6 +361,8 @@ class CryptoSniperBot:
             
             logger.info("🚀 Crypto Sniper Bot started successfully!")
             logger.info(f"Monitoring {len(self.SYMBOLS)} symbols across {len(self.TIMEFRAMES)} timeframes")
+            logger.info(f"Admin panel: http://localhost:{Config.PORT}/admin")
+            logger.info(f"Signals API: http://localhost:{Config.PORT}/signals")
             
             # Keep main thread alive
             while True:
