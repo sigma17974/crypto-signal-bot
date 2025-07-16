@@ -9,6 +9,7 @@ from web3.exceptions import ContractLogicError
 
 from sniper import config
 from sniper.telegram import send as notify
+from sniper.state import PositionTracker
 
 
 # --- PancakeSwap / UniswapV2 Router ABI subset ---
@@ -86,6 +87,7 @@ class Trader:
         if not config.PRIVATE_KEY:
             raise RuntimeError("PRIVATE_KEY must be set for trading")
         self.account = self.w3.eth.account.from_key(config.PRIVATE_KEY)
+        self.positions = PositionTracker()
         self.router = self.w3.eth.contract(
             address=Web3.to_checksum_address(config.ROUTER_ADDRESS), abi=ROUTER_ABI
         )
@@ -98,12 +100,31 @@ class Trader:
                 None, self._sync_execute, target
             )
             notify(f"✅ Swap sent: {tx_hash.hex()}")
+
+            # Mark position executed
+            self.positions.add(target["pair"])
+
         except Exception as exc:
             notify(f"❌ Swap failed: {exc}")
 
     # ---------------- internal sync helpers ----------------
 
     def _sync_execute(self, target: dict):
+        # Input validation
+        for addr_key in ("quote_token", "base_token", "pair"):
+            if not Web3.is_address(target[addr_key]):
+                raise ValueError(f"Invalid address for {addr_key}: {target[addr_key]}")
+
+        if self.positions.has(target["pair"]):
+            raise RuntimeError("Position already executed for this pair")
+
+        if target["amount_in"] <= 0:
+            raise ValueError("amount_in must be positive")
+
+        slippage_val = target.get("slippage", 0.5)
+        if not (0 < slippage_val < 50):
+            raise ValueError("slippage must be between 0 and 50 percent")
+
         path = [Web3.to_checksum_address(target["quote_token"]), Web3.to_checksum_address(target["base_token"])]
 
         amount_in_wei = self._to_wei(target["amount_in"], path[0])

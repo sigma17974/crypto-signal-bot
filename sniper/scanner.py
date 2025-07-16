@@ -61,6 +61,7 @@ ERC20_ABI_DECIMALS = [
 
 from functools import lru_cache
 from sniper import config
+from sniper.state import PositionTracker
 from web3 import Web3
 
 class PairWatcherScanner:
@@ -73,6 +74,7 @@ class PairWatcherScanner:
         # Cache contract objects
         self._pair_contracts: dict[str, any] = {}
         self._triggered: set[str] = set()  # pair addresses already emitted
+        self.positions = PositionTracker()
 
     async def start(self) -> None:
         notify("🔍 PairWatcherScanner started")
@@ -87,8 +89,8 @@ class PairWatcherScanner:
     async def _poll_once(self):
         for target in config.TARGETS:
             pair_addr = Web3.to_checksum_address(target["pair"])
-            if pair_addr in self._triggered:
-                continue  # already triggered
+            if pair_addr in self._triggered or self.positions.has(pair_addr):
+                continue  # already triggered or executed in previous session
 
             pair = self._get_pair_contract(pair_addr)
             try:
