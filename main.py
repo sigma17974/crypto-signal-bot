@@ -17,11 +17,15 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import requests
 from dotenv import load_dotenv
 
+# Local imports
+from config import Config
+from utils import TechnicalAnalysis, SignalGenerator, DataValidator
+
 # Load environment variables
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=getattr(logging, Config.LOG_LEVEL), format=Config.LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
 class CryptoSniperBot:
@@ -29,21 +33,19 @@ class CryptoSniperBot:
         self.app = Flask(__name__)
         self.scheduler = BackgroundScheduler()
         
-        # Configuration
-        self.TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-        self.TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-        self.BINANCE_API_KEY = os.getenv("BINANCE_API_KEY")
-        self.BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY")
+        # Validate configuration
+        if not Config.validate():
+            raise ValueError("Invalid configuration. Please check your environment variables.")
         
-        # Trading pairs to monitor
-        self.SYMBOLS = [
-            "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", 
-            "ADA/USDT", "DOT/USDT", "LINK/USDT", "MATIC/USDT",
-            "AVAX/USDT", "UNI/USDT", "ATOM/USDT", "LTC/USDT"
-        ]
+        # Configuration from Config class
+        self.TELEGRAM_TOKEN = Config.TELEGRAM_TOKEN
+        self.TELEGRAM_CHAT_ID = Config.TELEGRAM_CHAT_ID
+        self.BINANCE_API_KEY = Config.BINANCE_API_KEY
+        self.BINANCE_SECRET_KEY = Config.BINANCE_SECRET_KEY
         
-        # Timeframes for analysis
-        self.TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h"]
+        # Trading pairs and timeframes
+        self.SYMBOLS = Config.SYMBOLS
+        self.TIMEFRAMES = Config.TIMEFRAMES
         
         # Initialize exchange
         self.exchange = self._initialize_exchange()
@@ -53,8 +55,8 @@ class CryptoSniperBot:
         self.signals = []
         
         # Risk management
-        self.max_risk_per_trade = 0.02  # 2% risk per trade
-        self.min_risk_reward_ratio = 2.0
+        self.max_risk_per_trade = Config.MAX_RISK_PER_TRADE
+        self.min_risk_reward_ratio = Config.MIN_RISK_REWARD_RATIO
         
         # Initialize bot
         self._setup_routes()
@@ -66,7 +68,7 @@ class CryptoSniperBot:
             exchange = ccxt.binance({
                 'apiKey': self.BINANCE_API_KEY,
                 'secret': self.BINANCE_SECRET_KEY,
-                'sandbox': False,  # Set to True for testing
+                'sandbox': Config.EXCHANGE_SANDBOX,
                 'enableRateLimit': True,
             })
             logger.info("Exchange initialized successfully")
@@ -107,9 +109,9 @@ class CryptoSniperBot:
     
     def _setup_scheduler(self):
         """Setup background tasks"""
-        self.scheduler.add_job(self.update_market_data, 'interval', minutes=1)
-        self.scheduler.add_job(self.analyze_markets, 'interval', minutes=5)
-        self.scheduler.add_job(self.cleanup_old_data, 'interval', hours=1)
+        self.scheduler.add_job(self.update_market_data, 'interval', minutes=Config.MARKET_DATA_UPDATE_INTERVAL)
+        self.scheduler.add_job(self.analyze_markets, 'interval', minutes=Config.ANALYSIS_INTERVAL)
+        self.scheduler.add_job(self.cleanup_old_data, 'interval', minutes=Config.CLEANUP_INTERVAL)
         self.scheduler.start()
         logger.info("Scheduler started")
     
@@ -127,6 +129,12 @@ class CryptoSniperBot:
                         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
                         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
                         
+                        # Clean and validate data
+                        df = DataValidator.clean_data(df)
+                        if not DataValidator.validate_ohlcv_data(df):
+                            logger.warning(f"Invalid data for {symbol} {timeframe}")
+                            continue
+                        
                         if symbol not in self.market_data:
                             self.market_data[symbol] = {}
                         
@@ -138,39 +146,10 @@ class CryptoSniperBot:
         except Exception as e:
             logger.error(f"Error updating market data: {e}")
     
-    def calculate_technical_indicators(self, df: pd.DataFrame) -> Dict:
+    def calculate_technical_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         """Calculate technical indicators"""
         try:
-            # RSI
-            df['rsi'] = ta.momentum.RSIIndicator(df['close']).rsi()
-            
-            # MACD
-            macd = ta.trend.MACD(df['close'])
-            df['macd'] = macd.macd()
-            df['macd_signal'] = macd.macd_signal()
-            df['macd_histogram'] = macd.macd_diff()
-            
-            # Bollinger Bands
-            bb = ta.volatility.BollingerBands(df['close'])
-            df['bb_upper'] = bb.bollinger_hband()
-            df['bb_lower'] = bb.bollinger_lband()
-            df['bb_middle'] = bb.bollinger_mavg()
-            
-            # Stochastic
-            stoch = ta.momentum.StochasticOscillator(df['high'], df['low'], df['close'])
-            df['stoch_k'] = stoch.stoch()
-            df['stoch_d'] = stoch.stoch_signal()
-            
-            # Volume indicators
-            df['volume_sma'] = ta.volume.volume_sma(df['close'], df['volume'])
-            df['volume_ratio'] = df['volume'] / df['volume_sma']
-            
-            # Price action
-            df['price_change'] = df['close'].pct_change()
-            df['price_change_ma'] = df['price_change'].rolling(window=20).mean()
-            
-            return df
-            
+            return TechnicalAnalysis.calculate_all_indicators(df)
         except Exception as e:
             logger.error(f"Error calculating indicators: {e}")
             return df
@@ -187,56 +166,22 @@ class CryptoSniperBot:
             
             df = self.calculate_technical_indicators(df)
             
-            # Get latest data
-            current = df.iloc[-1]
-            prev = df.iloc[-2]
-            
-            # Sniper entry conditions
-            signals = []
-            
-            # 1. RSI oversold/overbought reversal
-            if current['rsi'] < 30 and prev['rsi'] >= 30:
-                signals.append("RSI_OVERSOLD_REVERSAL")
-            elif current['rsi'] > 70 and prev['rsi'] <= 70:
-                signals.append("RSI_OVERBOUGHT_REVERSAL")
-            
-            # 2. MACD crossover
-            if (current['macd'] > current['macd_signal'] and 
-                prev['macd'] <= prev['macd_signal']):
-                signals.append("MACD_BULLISH_CROSS")
-            elif (current['macd'] < current['macd_signal'] and 
-                  prev['macd'] >= prev['macd_signal']):
-                signals.append("MACD_BEARISH_CROSS")
-            
-            # 3. Bollinger Band squeeze
-            bb_width = (current['bb_upper'] - current['bb_lower']) / current['bb_middle']
-            if bb_width < 0.1:  # Tight squeeze
-                signals.append("BB_SQUEEZE")
-            
-            # 4. Volume spike
-            if current['volume_ratio'] > 2.0:
-                signals.append("VOLUME_SPIKE")
-            
-            # 5. Price momentum
-            if current['price_change'] > 0.02:  # 2% price increase
-                signals.append("PRICE_MOMENTUM")
-            
-            # 6. Support/Resistance break
-            if current['close'] > current['bb_upper']:
-                signals.append("RESISTANCE_BREAK")
-            elif current['close'] < current['bb_lower']:
-                signals.append("SUPPORT_BREAK")
+            # Use advanced signal detection
+            signals = SignalGenerator.detect_sniper_entries(df)
             
             if signals:
+                current = df.iloc[-1]
                 return {
                     "symbol": symbol,
                     "timeframe": timeframe,
-                    "signals": signals,
+                    "signals": [s["type"] for s in signals],
                     "price": current['close'],
                     "timestamp": current['timestamp'],
-                    "rsi": current['rsi'],
-                    "volume_ratio": current['volume_ratio'],
-                    "price_change": current['price_change']
+                    "rsi": current.get('rsi', 0),
+                    "volume_ratio": current.get('volume_ratio', 0),
+                    "price_change": current.get('price_change', 0),
+                    "confidence": max([s["confidence"] for s in signals]),
+                    "strength": max([s["strength"] for s in signals], key=lambda x: {"WEAK": 1, "MEDIUM": 2, "STRONG": 3}[x])
                 }
             
             return None
@@ -264,32 +209,40 @@ class CryptoSniperBot:
             symbol = sniper_data['symbol']
             price = sniper_data['price']
             
-            # Calculate stop loss and take profit
-            if "BULLISH" in str(sniper_data['signals']) or "RESISTANCE_BREAK" in sniper_data['signals']:
+            # Get ATR for dynamic risk calculation
+            df = self.market_data[symbol][sniper_data['timeframe']]
+            atr = df['atr'].iloc[-1] if 'atr' in df.columns else price * 0.02
+            
+            # Determine direction based on signals
+            bullish_signals = ["RSI_OVERSOLD_REVERSAL", "MACD_BULLISH_CROSS", "GOLDEN_CROSS", 
+                              "BB_SQUEEZE_BREAKOUT", "VOLUME_SPIKE_MOMENTUM", "RESISTANCE_BREAK", 
+                              "STOCH_OVERSOLD_REVERSAL", "VWAP_BOUNCE"]
+            
+            if any(signal in sniper_data['signals'] for signal in bullish_signals):
                 direction = "LONG"
-                stop_loss = price * 0.98  # 2% below entry
-                take_profit = price * 1.04  # 4% above entry
             else:
                 direction = "SHORT"
-                stop_loss = price * 1.02  # 2% above entry
-                take_profit = price * 0.96  # 4% below entry
             
-            risk_reward = self.calculate_risk_reward(price, stop_loss, take_profit)
+            # Calculate dynamic risk levels using ATR
+            risk_levels = SignalGenerator.calculate_risk_levels(price, atr, direction)
             
-            # Only generate signal if risk-reward ratio is acceptable
-            if risk_reward['ratio'] >= self.min_risk_reward_ratio:
+            # Only generate signal if risk-reward ratio is acceptable and confidence is high enough
+            if (risk_levels.get('ratio', 0) >= self.min_risk_reward_ratio and 
+                sniper_data.get('confidence', 0) >= Config.MIN_CONFIDENCE):
+                
                 signal = {
                     "id": f"signal_{int(time.time())}",
                     "symbol": symbol,
                     "direction": direction,
                     "entry_price": price,
-                    "stop_loss": stop_loss,
-                    "take_profit": take_profit,
-                    "risk_reward": risk_reward,
+                    "stop_loss": risk_levels['stop_loss'],
+                    "take_profit": risk_levels['take_profit'],
+                    "risk_reward": risk_levels,
                     "signals": sniper_data['signals'],
                     "timestamp": sniper_data['timestamp'],
                     "timeframe": sniper_data['timeframe'],
-                    "confidence": len(sniper_data['signals']) * 20  # Higher confidence with more signals
+                    "confidence": sniper_data.get('confidence', 0),
+                    "strength": sniper_data.get('strength', 'MEDIUM')
                 }
                 
                 return signal
@@ -378,12 +331,12 @@ class CryptoSniperBot:
     def cleanup_old_data(self):
         """Clean up old market data and signals"""
         try:
-            # Keep only last 100 signals
-            if len(self.signals) > 100:
-                self.signals = self.signals[-100:]
+            # Keep only last N signals
+            if len(self.signals) > Config.MAX_SIGNALS_STORED:
+                self.signals = self.signals[-Config.MAX_SIGNALS_STORED:]
             
-            # Clean up old market data (keep last 24 hours)
-            cutoff_time = datetime.now() - timedelta(hours=24)
+            # Clean up old market data
+            cutoff_time = datetime.now() - timedelta(hours=Config.MARKET_DATA_RETENTION_HOURS)
             for symbol in self.market_data:
                 for timeframe in self.market_data[symbol]:
                     df = self.market_data[symbol][timeframe]
@@ -400,7 +353,7 @@ class CryptoSniperBot:
         try:
             # Start Flask app in a separate thread
             def run_flask():
-                self.app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+                self.app.run(host=Config.HOST, port=Config.PORT)
             
             flask_thread = threading.Thread(target=run_flask)
             flask_thread.daemon = True
@@ -408,6 +361,8 @@ class CryptoSniperBot:
             
             logger.info("🚀 Crypto Sniper Bot started successfully!")
             logger.info(f"Monitoring {len(self.SYMBOLS)} symbols across {len(self.TIMEFRAMES)} timeframes")
+            logger.info(f"Admin panel: http://localhost:{Config.PORT}/admin")
+            logger.info(f"Signals API: http://localhost:{Config.PORT}/signals")
             
             # Keep main thread alive
             while True:
