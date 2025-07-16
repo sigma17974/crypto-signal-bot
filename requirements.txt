@@ -1,3 +1,10 @@
 flask
 apscheduler
 requests
+python-binance
+ccxt
+ta
+pandas
+numpy
+websocket-client
+python-dotenv
