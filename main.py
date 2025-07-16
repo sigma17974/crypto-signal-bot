@@ -20,6 +20,8 @@ from dotenv import load_dotenv
 # Local imports
 from config import Config
 from utils import TechnicalAnalysis, SignalGenerator, DataValidator
+from performance import PerformanceTracker, PerformanceAnalyzer
+from admin_panel import AdminPanel
 
 # Load environment variables
 load_dotenv()
@@ -58,6 +60,13 @@ class CryptoSniperBot:
         self.max_risk_per_trade = Config.MAX_RISK_PER_TRADE
         self.min_risk_reward_ratio = Config.MIN_RISK_REWARD_RATIO
         
+        # Performance tracking
+        self.performance_tracker = PerformanceTracker()
+        self.start_time = datetime.now()
+        
+        # Signal tracking
+        self.signal_cooldowns = {}  # Track signal cooldowns per symbol
+        
         # Initialize bot
         self._setup_routes()
         self._setup_scheduler()
@@ -79,19 +88,20 @@ class CryptoSniperBot:
     
     def _setup_routes(self):
         """Setup Flask routes"""
+        # Initialize admin panel
+        self.admin_panel = AdminPanel(self)
+        
         @self.app.route("/")
         def ping():
-            return {"status": "Crypto Sniper Bot is Alive!", "timestamp": datetime.now().isoformat()}
+            return {"status": f"{Config.BOT_NAME} is Alive!", "timestamp": datetime.now().isoformat()}
         
         @self.app.route("/admin")
         def admin():
-            return f"""
-            <h1>🚀 Crypto Sniper Bot Admin Panel</h1>
-            <p><strong>Status:</strong> Running</p>
-            <p><strong>Monitored Pairs:</strong> {len(self.SYMBOLS)}</p>
-            <p><strong>Signals Generated:</strong> {len(self.signals)}</p>
-            <p><strong>Last Update:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-            """
+            return self.admin_panel.render_dashboard()
+        
+        @self.app.route("/api/status")
+        def api_status():
+            return jsonify(self.admin_panel.get_api_data())
         
         @self.app.route("/signals")
         def get_signals():
@@ -106,6 +116,17 @@ class CryptoSniperBot:
                 "symbols": list(self.market_data.keys()),
                 "data_points": sum(len(data) for data in self.market_data.values())
             })
+        
+        @self.app.route("/performance")
+        def get_performance():
+            stats = self.performance_tracker.get_performance_stats(30)
+            return jsonify(stats)
+        
+        @self.app.route("/signals/history")
+        def get_signal_history():
+            limit = request.args.get('limit', 50, type=int)
+            history = self.performance_tracker.get_signal_history(limit)
+            return jsonify(history)
     
     def _setup_scheduler(self):
         """Setup background tasks"""
@@ -209,14 +230,19 @@ class CryptoSniperBot:
             symbol = sniper_data['symbol']
             price = sniper_data['price']
             
+            # Check signal cooldown
+            if symbol in self.signal_cooldowns:
+                last_signal_time = self.signal_cooldowns[symbol]
+                time_since_last = (datetime.now() - last_signal_time).total_seconds() / 60
+                if time_since_last < Config.SIGNAL_COOLDOWN_MINUTES:
+                    return None
+            
             # Get ATR for dynamic risk calculation
             df = self.market_data[symbol][sniper_data['timeframe']]
             atr = df['atr'].iloc[-1] if 'atr' in df.columns else price * 0.02
             
             # Determine direction based on signals
-            bullish_signals = ["RSI_OVERSOLD_REVERSAL", "MACD_BULLISH_CROSS", "GOLDEN_CROSS", 
-                              "BB_SQUEEZE_BREAKOUT", "VOLUME_SPIKE_MOMENTUM", "RESISTANCE_BREAK", 
-                              "STOCH_OVERSOLD_REVERSAL", "VWAP_BOUNCE"]
+            bullish_signals = Config.SIGNAL_TYPES["LONG"]
             
             if any(signal in sniper_data['signals'] for signal in bullish_signals):
                 direction = "LONG"
@@ -245,6 +271,9 @@ class CryptoSniperBot:
                     "strength": sniper_data.get('strength', 'MEDIUM')
                 }
                 
+                # Update cooldown
+                self.signal_cooldowns[symbol] = datetime.now()
+                
                 return signal
             
             return None
@@ -267,6 +296,11 @@ class CryptoSniperBot:
                         
                         if signal:
                             self.signals.append(signal)
+                            
+                            # Record signal in performance tracker
+                            if Config.ENABLE_PERFORMANCE_TRACKING:
+                                self.performance_tracker.record_signal(signal)
+                            
                             self.send_telegram_signal(signal)
                             logger.info(f"Generated signal for {symbol}: {signal['direction']}")
                 
@@ -343,6 +377,21 @@ class CryptoSniperBot:
                     df = df[df['timestamp'] > cutoff_time]
                     self.market_data[symbol][timeframe] = df
             
+            # Clean up performance data
+            if Config.ENABLE_PERFORMANCE_TRACKING:
+                self.performance_tracker.cleanup_old_data(Config.PERFORMANCE_HISTORY_DAYS)
+            
+            # Record bot statistics
+            if Config.ENABLE_PERFORMANCE_TRACKING:
+                stats = {
+                    'symbols_monitored': len(self.SYMBOLS),
+                    'signals_generated': len(self.signals),
+                    'active_signals': len([s for s in self.signals if s.get('status') == 'ACTIVE']),
+                    'market_data_points': sum(len(data) for data in self.market_data.values()),
+                    'uptime_minutes': int((datetime.now() - self.start_time).total_seconds() / 60)
+                }
+                self.performance_tracker.record_bot_statistics(stats)
+            
             logger.info("Cleaned up old data")
             
         except Exception as e:
@@ -359,10 +408,12 @@ class CryptoSniperBot:
             flask_thread.daemon = True
             flask_thread.start()
             
-            logger.info("🚀 Crypto Sniper Bot started successfully!")
-            logger.info(f"Monitoring {len(self.SYMBOLS)} symbols across {len(self.TIMEFRAMES)} timeframes")
-            logger.info(f"Admin panel: http://localhost:{Config.PORT}/admin")
-            logger.info(f"Signals API: http://localhost:{Config.PORT}/signals")
+            logger.info(f"🚀 {Config.BOT_NAME} v{Config.BOT_VERSION} started successfully!")
+            logger.info(f"📊 Monitoring {len(self.SYMBOLS)} symbols across {len(self.TIMEFRAMES)} timeframes")
+            logger.info(f"🌐 Admin panel: http://localhost:{Config.PORT}/admin")
+            logger.info(f"📡 API status: http://localhost:{Config.PORT}/api/status")
+            logger.info(f"📈 Performance: http://localhost:{Config.PORT}/performance")
+            logger.info(f"📋 Signals: http://localhost:{Config.PORT}/signals")
             
             # Keep main thread alive
             while True:
