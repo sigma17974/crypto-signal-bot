@@ -1,0 +1,15 @@
+flask
+flask-login
+apscheduler
+requests
+python-binance
+ccxt
+ta
+pandas
+numpy
+websocket-client
+python-dotenv
+python-telegram-bot
+psutil
+plotly
+kaleido
