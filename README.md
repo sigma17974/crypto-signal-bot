@@ -35,6 +35,16 @@
 - **24/7 Uptime** with Railway deployment
 - **X-Pro Signal Enhancement** with AI-powered analysis
 
+### 💰 **Advanced Arbitrage System**
+- **Multi-Exchange Arbitrage**: Real-time arbitrage detection across 40+ exchanges
+- **Newly Listed Coin Detection**: Automatic detection of new coin listings
+- **Deposit/Withdrawal Verification**: Check exchange deposit/withdrawal status
+- **Bad Trade Protection**: Advanced protection against suspicious trading patterns
+- **Risk Scoring**: Comprehensive risk assessment for each opportunity
+- **Fee Calculation**: Accurate fee calculation for net profit analysis
+- **Execution Speed Optimization**: Prioritize faster exchanges for better execution
+- **Real-time Monitoring**: Continuous monitoring every minute
+
 ---
 
 ## 🚀 Quick Start
@@ -128,6 +138,9 @@ python start_admin.py
 # Test everything
 python test_bot.py
 
+# Test advanced arbitrage system
+python test_advanced_arbitrage.py
+
 # Start the bot
 python main.py
 ```
@@ -171,6 +184,19 @@ SYMBOLS = [
 MAX_RISK_PER_TRADE = 0.02  # 2% risk per trade
 MIN_RISK_REWARD_RATIO = 2.0  # Minimum 1:2 risk-reward
 MIN_CONFIDENCE = 40  # Minimum signal confidence
+```
+
+### **Arbitrage System Settings**
+```python
+ARBITRAGE_MIN_PROFIT_PCT = 0.3  # Minimum 0.3% profit
+ARBITRAGE_MAX_RISK_SCORE = 0.7  # Maximum 70% risk
+ARBITRAGE_MIN_VOLUME = 1000  # Minimum volume
+ARBITRAGE_MIN_EXECUTION_SPEED = 0.2  # Minimum execution speed
+ARBITRAGE_CHECK_INTERVAL = 1  # Check every minute
+ARBITRAGE_MAX_OPPORTUNITIES = 20  # Maximum opportunities to track
+ARBITRAGE_ENABLE_DEPOSIT_WITHDRAWAL_CHECK = True  # Check deposit/withdrawal status
+ARBITRAGE_ENABLE_BAD_TRADE_PROTECTION = True  # Enable bad trade protection
+ARBITRAGE_ENABLE_NEW_LISTING_DETECTION = True  # Enable new listing detection
 ```
 
 ### **Technical Indicators**

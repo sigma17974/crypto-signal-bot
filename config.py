@@ -82,6 +82,18 @@ class Config:
     ENABLE_NEWS_SENTIMENT = False
     ENABLE_SOCIAL_SENTIMENT = False
     ENABLE_FUNDAMENTAL_ANALYSIS = False
+    ENABLE_ARBITRAGE_SYSTEM = True
+    
+    # === ARBITRAGE SYSTEM SETTINGS ===
+    ARBITRAGE_MIN_PROFIT_PCT = 0.3  # Minimum 0.3% profit
+    ARBITRAGE_MAX_RISK_SCORE = 0.7  # Maximum 70% risk
+    ARBITRAGE_MIN_VOLUME = 1000  # Minimum volume
+    ARBITRAGE_MIN_EXECUTION_SPEED = 0.2  # Minimum execution speed
+    ARBITRAGE_CHECK_INTERVAL = 1  # Check every minute
+    ARBITRAGE_MAX_OPPORTUNITIES = 20  # Maximum opportunities to track
+    ARBITRAGE_ENABLE_DEPOSIT_WITHDRAWAL_CHECK = True  # Check deposit/withdrawal status
+    ARBITRAGE_ENABLE_BAD_TRADE_PROTECTION = True  # Enable bad trade protection
+    ARBITRAGE_ENABLE_NEW_LISTING_DETECTION = True  # Enable new listing detection
     
     # === SCHEDULER ===
     MARKET_DATA_UPDATE_INTERVAL = 1  # minutes

@@ -24,6 +24,7 @@ from performance import PerformanceTracker, PerformanceAnalyzer
 from admin_dashboard import AdminDashboard
 from advanced_indicators import InstitutionalZPlusPlus
 from chart_generator import ChartGenerator
+from advanced_arbitrage import AdvancedArbitrage
 
 # Load environment variables
 load_dotenv()
@@ -79,6 +80,9 @@ class CryptoSniperBot:
         
         # Chart generator
         self.chart_generator = ChartGenerator()
+        
+        # Advanced arbitrage system
+        self.arbitrage_system = AdvancedArbitrage()
         
         # Initialize bot
         self._setup_routes()
@@ -153,6 +157,7 @@ class CryptoSniperBot:
         """Setup background tasks"""
         self.scheduler.add_job(self.update_market_data, 'interval', minutes=Config.MARKET_DATA_UPDATE_INTERVAL)
         self.scheduler.add_job(self.analyze_markets, 'interval', minutes=Config.ANALYSIS_INTERVAL)
+        self.scheduler.add_job(self.monitor_arbitrage, 'interval', minutes=1)  # Check arbitrage every minute
         self.scheduler.add_job(self.cleanup_old_data, 'interval', minutes=Config.CLEANUP_INTERVAL)
         self.scheduler.start()
         logger.info("Scheduler started")
@@ -590,18 +595,22 @@ class CryptoSniperBot:
 📈 **Sell Exchange:** {signal['sell_exchange'].upper()}
 💵 **Buy Price:** ${signal['buy_price']:.4f}
 💸 **Sell Price:** ${signal['sell_price']:.4f}
-📈 **Profit:** {signal['profit_pct']:.2f}%
+📈 **Net Profit:** {signal['net_profit_pct']:.2f}%
 ⏰ **Time:** {signal['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}
 
 🔍 **Arbitrage Analysis:**
 • Price Difference: ${signal['sell_price'] - signal['buy_price']:.4f}
-• Profit Potential: {signal['profit_pct']:.2f}%
-• Risk Level: LOW (Price difference only)
+• Gross Profit: {signal['gross_profit_pct']:.2f}%
+• Net Profit: {signal['net_profit_pct']:.2f}%
+• Risk Score: {signal['risk_score']:.2f}
+• Execution Speed: {signal['execution_speed']:.2f}
+• Volume: {signal['volume']:.2f}
 
 ⚠️ **Important:** 
 • Execute quickly as arbitrage opportunities disappear fast
 • Consider trading fees in profit calculation
 • Monitor for slippage during execution
+• Check deposit/withdrawal status before trading
 
 ⚠️ **Risk Warning:** This is not financial advice. Arbitrage involves execution risk.
             """.strip()
@@ -636,6 +645,65 @@ class CryptoSniperBot:
             
         except Exception as e:
             logger.error(f"Error sending arbitrage Telegram signal: {e}")
+    
+    def monitor_arbitrage(self):
+        """Monitor arbitrage opportunities"""
+        try:
+            # Get arbitrage signals from the advanced arbitrage system
+            arbitrage_signals = self.arbitrage_system.get_arbitrage_signals()
+            
+            for signal in arbitrage_signals:
+                # Validate arbitrage signal
+                if self._validate_arbitrage_signal(signal):
+                    # Process arbitrage signal
+                    self._process_arbitrage_signal(signal)
+                    
+                    # Send Telegram notification
+                    self.send_arbitrage_telegram_signal(signal)
+            
+            # Check for newly listed coins
+            new_listings = self.arbitrage_system.get_new_listings()
+            if new_listings:
+                for listing in new_listings:
+                    self._process_new_listing(listing)
+            
+            # Check exchange status
+            exchange_status = self.arbitrage_system.get_exchange_status()
+            if exchange_status:
+                self._update_exchange_status(exchange_status)
+                
+        except Exception as e:
+            logger.error(f"Error monitoring arbitrage: {e}")
+    
+    def _process_new_listing(self, listing: str):
+        """Process newly listed coin"""
+        try:
+            signal = {
+                'type': 'NEW_LISTING',
+                'symbol': listing,
+                'timestamp': datetime.now(),
+                'message': f"🚀 New listing detected: {listing}",
+                'priority': 'HIGH',
+                'source': 'arbitrage_system'
+            }
+            
+            # Send Telegram notification
+            self.send_telegram_signal(signal)
+            
+            logger.info(f"New listing processed: {listing}")
+            
+        except Exception as e:
+            logger.error(f"Error processing new listing {listing}: {e}")
+    
+    def _update_exchange_status(self, status: Dict):
+        """Update exchange status information"""
+        try:
+            for exchange, info in status.items():
+                if info.get('status') != 'operational':
+                    logger.warning(f"Exchange {exchange} status: {info.get('status')}")
+                    
+        except Exception as e:
+            logger.error(f"Error updating exchange status: {e}")
     
     def cleanup_old_data(self):
         """Clean up old market data and signals"""
