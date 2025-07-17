@@ -1,0 +1,7 @@
+Enhanced Features Demo
+Manual Coin Management: ✅
+Dynamic Timeframes: ✅
+Trading Sessions: ✅
+Color Customization: ✅
+Duplicate Prevention: ✅
+Dynamic Scanning: ✅

@@ -168,6 +168,145 @@ class Config:
         "SIDEWAYS": ["BTC/USDT", "ETH/USDT", "BNB/USDT"]
     }
     
+    # === MANUAL COIN MANAGEMENT ===
+    ENABLE_MANUAL_COIN_MANAGEMENT = True
+    MANUAL_COINS_FILE = "manual_coins.json"
+    MAX_MANUAL_COINS = 50
+    MIN_COIN_VOLUME = 1000000  # Minimum 24h volume for manual coins
+    
+    # === DYNAMIC TIMEFRAMES ===
+    ENABLE_DYNAMIC_TIMEFRAMES = True
+    DYNAMIC_TIMEFRAMES_FILE = "dynamic_timeframes.json"
+    AVAILABLE_TIMEFRAMES = ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d"]
+    
+    # === TRADING SESSIONS ===
+    ENABLE_TRADING_SESSIONS = True
+    SESSIONS_CONFIG_FILE = "trading_sessions.json"
+    
+    # Session types
+    SESSION_TYPES = {
+        "SCALPING": {
+            "timeframes": ["1m", "5m"],
+            "max_hold_time": 30,  # minutes
+            "risk_per_trade": 0.01,  # 1%
+            "target_profit": 0.005,  # 0.5%
+            "enabled": True
+        },
+        "DAY_TRADING": {
+            "timeframes": ["15m", "1h"],
+            "max_hold_time": 480,  # 8 hours
+            "risk_per_trade": 0.02,  # 2%
+            "target_profit": 0.02,  # 2%
+            "enabled": True
+        },
+        "SWING_TRADING": {
+            "timeframes": ["4h", "1d"],
+            "max_hold_time": 10080,  # 7 days
+            "risk_per_trade": 0.03,  # 3%
+            "target_profit": 0.05,  # 5%
+            "enabled": True
+        }
+    }
+    
+    # === DYNAMIC COIN SCANNING ===
+    ENABLE_DYNAMIC_COIN_SCANNING = True
+    DYNAMIC_SCAN_INTERVAL = 300  # 5 minutes
+    MIN_COIN_PRICE = 0.000001  # Minimum coin price
+    MAX_COIN_PRICE = 100000  # Maximum coin price
+    MIN_MARKET_CAP = 1000000  # Minimum market cap
+    MIN_24H_VOLUME = 500000  # Minimum 24h volume
+    MIN_24H_CHANGE = -50  # Minimum 24h price change %
+    MAX_24H_CHANGE = 200  # Maximum 24h price change %
+    
+    # === DUPLICATE SIGNAL PREVENTION ===
+    ENABLE_DUPLICATE_PREVENTION = True
+    SIGNAL_COOLDOWN_PER_COIN = 3600  # 1 hour between signals for same coin
+    MIN_PROFIT_THRESHOLD = 0.5  # Minimum profit % to send duplicate signal
+    SIGNAL_HISTORY_SIZE = 1000  # Number of signals to keep in history
+    
+    # === COLOR CUSTOMIZATION ===
+    ENABLE_COLOR_CUSTOMIZATION = True
+    COLORS_CONFIG_FILE = "dashboard_colors.json"
+    
+    # Default colors
+    DEFAULT_COLORS = {
+        "primary": "#007bff",
+        "secondary": "#6c757d",
+        "success": "#28a745",
+        "danger": "#dc3545",
+        "warning": "#ffc107",
+        "info": "#17a2b8",
+        "light": "#f8f9fa",
+        "dark": "#343a40",
+        "background": "#ffffff",
+        "text": "#212529",
+        "border": "#dee2e6",
+        "chart_up": "#28a745",
+        "chart_down": "#dc3545",
+        "signal_long": "#28a745",
+        "signal_short": "#dc3545",
+        "profit": "#28a745",
+        "loss": "#dc3545"
+    }
+    
+    # === AUTO SESSION SWITCHING ===
+    ENABLE_AUTO_SESSION_SWITCHING = True
+    SESSION_SWITCH_INTERVAL = 3600  # 1 hour
+    MARKET_CONDITION_CHECK_INTERVAL = 300  # 5 minutes
+    
+    # Market condition thresholds
+    BULL_MARKET_THRESHOLD = 0.05  # 5% average gain
+    BEAR_MARKET_THRESHOLD = -0.05  # -5% average loss
+    SIDEWAYS_MARKET_THRESHOLD = 0.02  # ±2% range
+    
+    # === DYNAMIC CONFIGURATION ===
+    DYNAMIC_SYMBOLS = SYMBOLS.copy()
+    DYNAMIC_TIMEFRAMES = TIMEFRAMES.copy()
+    SESSION_MODES = ['auto', 'manual']
+    ACTIVE_SESSION = 'auto'  # or 'manual', or session name
+    COLOR_THEMES = ['light', 'dark', 'dynamic', 'custom']
+    ACTIVE_COLOR_THEME = 'dynamic'
+    CUSTOM_COLORS = {
+        'background': '#181818',
+        'card': '#23272e',
+        'text': '#ffffff',
+        'accent': '#00ff99'
+    }
+
+    @classmethod
+    def add_symbol(cls, symbol: str):
+        if symbol not in cls.DYNAMIC_SYMBOLS:
+            cls.DYNAMIC_SYMBOLS.append(symbol)
+    
+    @classmethod
+    def remove_symbol(cls, symbol: str):
+        if symbol in cls.DYNAMIC_SYMBOLS:
+            cls.DYNAMIC_SYMBOLS.remove(symbol)
+    
+    @classmethod
+    def add_timeframe(cls, tf: str):
+        if tf not in cls.DYNAMIC_TIMEFRAMES:
+            cls.DYNAMIC_TIMEFRAMES.append(tf)
+    
+    @classmethod
+    def remove_timeframe(cls, tf: str):
+        if tf in cls.DYNAMIC_TIMEFRAMES:
+            cls.DYNAMIC_TIMEFRAMES.remove(tf)
+    
+    @classmethod
+    def set_session(cls, session: str):
+        if session in cls.SESSION_MODES or session in ['asian', 'london', 'newyork']:
+            cls.ACTIVE_SESSION = session
+    
+    @classmethod
+    def set_color_theme(cls, theme: str):
+        if theme in cls.COLOR_THEMES:
+            cls.ACTIVE_COLOR_THEME = theme
+    
+    @classmethod
+    def set_custom_colors(cls, colors: dict):
+        cls.CUSTOM_COLORS.update(colors)
+    
     @classmethod
     def validate(cls) -> bool:
         """Validate configuration"""

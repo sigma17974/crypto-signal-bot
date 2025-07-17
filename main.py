@@ -12,7 +12,7 @@ import ccxt
 import pandas as pd
 import numpy as np
 import ta
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
 from apscheduler.schedulers.background import BackgroundScheduler
 import requests
 from dotenv import load_dotenv
@@ -156,6 +156,69 @@ class CryptoSniperBot:
             limit = request.args.get('limit', 50, type=int)
             history = self.performance_tracker.get_signal_history(limit)
             return jsonify(history)
+        
+        @self.app.route("/api/add-symbol", methods=["POST"])
+        def api_add_symbol():
+            data = request.json
+            symbol = data.get('symbol')
+            if symbol:
+                Config.add_symbol(symbol)
+                return jsonify({'status': 'ok', 'symbols': Config.DYNAMIC_SYMBOLS})
+            return jsonify({'status': 'error', 'message': 'No symbol provided'}), 400
+
+        @self.app.route("/api/remove-symbol", methods=["POST"])
+        def api_remove_symbol():
+            data = request.json
+            symbol = data.get('symbol')
+            if symbol:
+                Config.remove_symbol(symbol)
+                return jsonify({'status': 'ok', 'symbols': Config.DYNAMIC_SYMBOLS})
+            return jsonify({'status': 'error', 'message': 'No symbol provided'}), 400
+
+        @self.app.route("/api/add-timeframe", methods=["POST"])
+        def api_add_timeframe():
+            data = request.json
+            tf = data.get('timeframe')
+            if tf:
+                Config.add_timeframe(tf)
+                return jsonify({'status': 'ok', 'timeframes': Config.DYNAMIC_TIMEFRAMES})
+            return jsonify({'status': 'error', 'message': 'No timeframe provided'}), 400
+
+        @self.app.route("/api/remove-timeframe", methods=["POST"])
+        def api_remove_timeframe():
+            data = request.json
+            tf = data.get('timeframe')
+            if tf:
+                Config.remove_timeframe(tf)
+                return jsonify({'status': 'ok', 'timeframes': Config.DYNAMIC_TIMEFRAMES})
+            return jsonify({'status': 'error', 'message': 'No timeframe provided'}), 400
+
+        @self.app.route("/api/set-session", methods=["POST"])
+        def api_set_session():
+            data = request.json
+            session = data.get('session')
+            if session:
+                Config.set_session(session)
+                return jsonify({'status': 'ok', 'session': Config.ACTIVE_SESSION})
+            return jsonify({'status': 'error', 'message': 'No session provided'}), 400
+
+        @self.app.route("/api/set-color-theme", methods=["POST"])
+        def api_set_color_theme():
+            data = request.json
+            theme = data.get('theme')
+            if theme:
+                Config.set_color_theme(theme)
+                return jsonify({'status': 'ok', 'theme': Config.ACTIVE_COLOR_THEME})
+            return jsonify({'status': 'error', 'message': 'No theme provided'}), 400
+
+        @self.app.route("/api/set-custom-colors", methods=["POST"])
+        def api_set_custom_colors():
+            data = request.json
+            colors = data.get('colors')
+            if colors:
+                Config.set_custom_colors(colors)
+                return jsonify({'status': 'ok', 'colors': Config.CUSTOM_COLORS})
+            return jsonify({'status': 'error', 'message': 'No colors provided'}), 400
     
     def _setup_scheduler(self):
         """Setup background tasks"""
@@ -174,8 +237,8 @@ class CryptoSniperBot:
             return
         
         try:
-            for symbol in self.SYMBOLS:
-                for timeframe in self.TIMEFRAMES:
+            for symbol in Config.DYNAMIC_SYMBOLS:
+                for timeframe in Config.DYNAMIC_TIMEFRAMES:
                     try:
                         ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=100)
                         df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
@@ -336,8 +399,8 @@ class CryptoSniperBot:
                 self._process_arbitrage_signal(signal)
         
         # Traditional analysis for backup
-        for symbol in self.SYMBOLS:
-            for timeframe in self.TIMEFRAMES:
+        for symbol in Config.DYNAMIC_SYMBOLS:
+            for timeframe in Config.DYNAMIC_TIMEFRAMES:
                 try:
                     sniper_data = self.detect_sniper_entries(symbol, timeframe)
                     
@@ -713,8 +776,8 @@ class CryptoSniperBot:
     def monitor_enhanced_signals(self):
         """Monitor enhanced trading signals with TP/SL and momentum-based logic"""
         try:
-            for symbol in self.SYMBOLS:
-                for timeframe in self.TIMEFRAMES:
+            for symbol in Config.DYNAMIC_SYMBOLS:
+                for timeframe in Config.DYNAMIC_TIMEFRAMES:
                     try:
                         # Check if should scan this symbol
                         if not self.enhanced_signals.market_scanner.should_scan_symbol(symbol):
@@ -924,7 +987,7 @@ class CryptoSniperBot:
             # Record bot statistics
             if Config.ENABLE_PERFORMANCE_TRACKING:
                 stats = {
-                    'symbols_monitored': len(self.SYMBOLS),
+                    'symbols_monitored': len(Config.DYNAMIC_SYMBOLS),
                     'signals_generated': len(self.signals),
                     'active_signals': len([s for s in self.signals if s.get('status') == 'ACTIVE']),
                     'market_data_points': sum(len(data) for data in self.market_data.values()),
@@ -949,7 +1012,7 @@ class CryptoSniperBot:
             flask_thread.start()
             
             logger.info(f"🚀 {Config.BOT_NAME} v{Config.BOT_VERSION} started successfully!")
-            logger.info(f"📊 Monitoring {len(self.SYMBOLS)} symbols across {len(self.TIMEFRAMES)} timeframes")
+            logger.info(f"📊 Monitoring {len(Config.DYNAMIC_SYMBOLS)} symbols across {len(Config.DYNAMIC_TIMEFRAMES)} timeframes")
             logger.info(f"🌐 Admin panel: http://localhost:{Config.PORT}/admin")
             logger.info(f"📡 API status: http://localhost:{Config.PORT}/api/status")
             logger.info(f"📈 Performance: http://localhost:{Config.PORT}/performance")
