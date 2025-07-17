@@ -711,26 +711,30 @@ class CryptoSniperBot:
             logger.error(f"Error updating exchange status: {e}")
     
     def monitor_enhanced_signals(self):
-        """Monitor enhanced trading signals (day trading, scalping, swing trading)"""
+        """Monitor enhanced trading signals with TP/SL and momentum-based logic"""
         try:
             for symbol in self.SYMBOLS:
-                for timeframe in ['1h', '4h', '15m']:  # Different timeframes for different strategies
+                for timeframe in self.TIMEFRAMES:
                     try:
+                        # Check if should scan this symbol
+                        if not self.enhanced_signals.market_scanner.should_scan_symbol(symbol):
+                            continue
+                        
                         # Get market data
                         if symbol in self.market_data and timeframe in self.market_data[symbol]:
                             df = self.market_data[symbol][timeframe]
                             
                             if not df.empty and len(df) > 50:  # Ensure enough data
-                                # Generate enhanced signals
-                                signals = self.enhanced_signals.generate_all_signals(df, symbol)
+                                # Generate enhanced signal with TP/SL
+                                signal = self.enhanced_signals.generate_enhanced_signal(symbol, timeframe, df)
                                 
-                                for signal in signals:
+                                if signal:
                                     # Validate signal
                                     if self._validate_enhanced_signal(signal):
                                         # Process enhanced signal
                                         self._process_enhanced_signal(signal)
                                         
-                                        # Send Telegram notification
+                                        # Send Telegram notification with TP/SL
                                         self.send_enhanced_telegram_signal(signal)
                                         
                     except Exception as e:
@@ -740,25 +744,29 @@ class CryptoSniperBot:
             logger.error(f"Error monitoring enhanced signals: {e}")
     
     def _validate_enhanced_signal(self, signal: Dict) -> bool:
-        """Validate enhanced trading signal"""
+        """Validate enhanced trading signal with TP/SL"""
         try:
             # Check required fields
-            required_fields = ['type', 'signal', 'symbol', 'price', 'confidence', 'leverage']
+            required_fields = ['signal_type', 'symbol', 'entry_price', 'take_profit', 'stop_loss', 'confidence_score']
             for field in required_fields:
                 if field not in signal:
                     return False
             
             # Check confidence threshold
-            if signal['confidence'] < 50:
+            if signal.get('confidence_score', 0) < 0.6:  # 60% confidence
+                return False
+            
+            # Check risk/reward ratio
+            if signal.get('risk_reward_ratio', 0) < Config.MIN_RISK_REWARD_RATIO:
                 return False
             
             # Check if signal is recent (within last 5 minutes)
-            signal_time = signal.get('timestamp', datetime.now())
+            signal_time = datetime.fromisoformat(signal.get('timestamp', datetime.now().isoformat()))
             if (datetime.now() - signal_time).total_seconds() > 300:
                 return False
             
             # Check cooldown
-            signal_key = f"{signal['symbol']}_{signal['type']}"
+            signal_key = f"{signal['symbol']}_{signal['signal_type']}"
             if signal_key in self.signal_cooldowns:
                 last_signal_time = self.signal_cooldowns[signal_key]
                 if (datetime.now() - last_signal_time).total_seconds() < 1800:  # 30 minutes cooldown
@@ -771,86 +779,90 @@ class CryptoSniperBot:
             return False
     
     def _process_enhanced_signal(self, signal: Dict):
-        """Process enhanced trading signal"""
+        """Process enhanced trading signal with TP/SL"""
         try:
             # Add to signals list
             self.signals.append(signal)
             
             # Update cooldown
-            signal_key = f"{signal['symbol']}_{signal['type']}"
+            signal_key = f"{signal['symbol']}_{signal['signal_type']}"
             self.signal_cooldowns[signal_key] = datetime.now()
             
             # Track performance
             if Config.ENABLE_PERFORMANCE_TRACKING:
                 self.performance_tracker.record_signal(signal)
             
-            logger.info(f"Enhanced signal processed: {signal['type']} {signal['signal']} {signal['symbol']}")
+            logger.info(f"Enhanced signal processed: {signal['signal_type']} {signal['symbol']} TP: {signal.get('take_profit', 0):.6f} SL: {signal.get('stop_loss', 0):.6f}")
             
         except Exception as e:
             logger.error(f"Error processing enhanced signal: {e}")
     
     def send_enhanced_telegram_signal(self, signal: Dict):
-        """Send enhanced trading signal to Telegram"""
+        """Send enhanced trading signal to Telegram with TP/SL"""
         if not self.TELEGRAM_TOKEN or not self.TELEGRAM_CHAT_ID:
             logger.warning("Telegram credentials not configured")
             return
         
         try:
-            # Signal type emoji mapping
-            emoji_map = {
-                'DAY_TRADING': '📈',
-                'SCALPING': '⚡',
-                'SWING_TRADING': '📊'
-            }
+            # Signal direction emoji
+            direction_emoji = '🟢' if signal['signal_type'] == 'LONG' else '🔴'
+            signal_emoji = '📈' if signal['signal_type'] == 'LONG' else '📉'
             
-            signal_emoji = emoji_map.get(signal['type'], '📊')
-            direction_emoji = '🟢' if signal['signal'] == 'LONG' else '🔴'
+            # Momentum analysis
+            momentum = signal.get('momentum', {})
+            market_conditions = signal.get('market_conditions', {})
             
-            # Support/Resistance levels
-            levels = signal.get('support_resistance', {})
-            support_levels = levels.get('support_levels', {})
-            resistance_levels = levels.get('resistance_levels', {})
+            # Calculate percentage changes
+            entry_price = signal['entry_price']
+            take_profit = signal.get('take_profit', entry_price)
+            stop_loss = signal.get('stop_loss', entry_price)
             
-            # Leverage info
-            leverage_info = signal.get('leverage', {})
+            tp_percent = ((take_profit - entry_price) / entry_price) * 100
+            sl_percent = ((entry_price - stop_loss) / entry_price) * 100
             
             message = f"""
-{signal_emoji} **CRYPTOSNIPERXPRO {signal['type'].replace('_', ' ')} SIGNAL** {signal_emoji}
+{signal_emoji} **CRYPTOSNIPERXPRO ENHANCED SIGNAL** {signal_emoji}
 
-{direction_emoji} **Signal**: {signal['signal']}
+{direction_emoji} **Signal Type**: {signal['signal_type']}
 🎯 **Symbol**: {signal['symbol']}
-💰 **Price**: ${signal['price']:.4f}
-📊 **Confidence**: {signal['confidence']}%
+💰 **Entry Price**: ${entry_price:.6f}
 ⏰ **Timeframe**: {signal['timeframe']}
-⏰ **Time**: {signal['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}
+⏰ **Time**: {signal['timestamp']}
 
-🔧 **Smart Leverage System**:
-• Leverage: {leverage_info.get('leverage', 1)}x
-• Level: {leverage_info.get('level', 'LOW')}
-• Max Leverage: {leverage_info.get('max_leverage', 1)}x
+🎯 **TAKE PROFIT & STOP LOSS**:
+📈 **Take Profit**: ${take_profit:.6f} ({tp_percent:+.2f}%)
+🛑 **Stop Loss**: ${stop_loss:.6f} ({sl_percent:+.2f}%)
+⚖️ **Risk/Reward Ratio**: {signal.get('risk_reward_ratio', 0):.2f}
+💰 **Risk Amount**: ${signal.get('risk_amount', 0):.6f}
+💎 **Reward Amount**: ${signal.get('reward_amount', 0):.6f}
 
-📊 **Support Levels**:
-• S1: ${support_levels.get('s1', 0):.4f}
-• S2: ${support_levels.get('s2', 0):.4f}
-• MA20: ${support_levels.get('ma20', 0):.4f}
-• MA50: ${support_levels.get('ma50', 0):.4f}
+📊 **MOMENTUM ANALYSIS**:
+🎯 **Overall Momentum**: {momentum.get('overall_momentum', 0):.3f}
+📈 **RSI Momentum**: {momentum.get('rsi_momentum', 0):.3f}
+📊 **MACD Momentum**: {momentum.get('macd_momentum', 0):.3f}
+📈 **Stochastic Momentum**: {momentum.get('stoch_momentum', 0):.3f}
+📊 **Volume Momentum**: {momentum.get('volume_momentum', 0):.3f}
 
-📈 **Resistance Levels**:
-• R1: ${resistance_levels.get('r1', 0):.4f}
-• R2: ${resistance_levels.get('r2', 0):.4f}
-• R3: ${resistance_levels.get('r3', 0):.4f}
+🌍 **MARKET CONDITIONS**:
+📈 **Trend Direction**: {market_conditions.get('trend_direction', 'Unknown')}
+📊 **Volatility Regime**: {market_conditions.get('volatility_regime', 'Unknown')}
+📈 **Volume Ratio**: {market_conditions.get('volume_ratio', 0):.2f}
 
-🔍 **Technical Indicators**:
-• RSI: {signal.get('indicators', {}).get('rsi', 0):.2f}
-• MACD: {signal.get('indicators', {}).get('macd', 0):.4f}
-• Volume Ratio: {signal.get('indicators', {}).get('volume_ratio', 0):.2f}
-• BB Position: {signal.get('indicators', {}).get('bb_position', 0):.2f}
+🎯 **CONFIDENCE & RISK**:
+📊 **Confidence Score**: {signal.get('confidence_score', 0):.1%}
+⚠️ **Risk Score**: {signal.get('risk_score', 0):.1%}
+📈 **Volatility**: {signal.get('volatility', 0):.1%}
 
-⚠️ **Risk Management**:
-• Use proper position sizing
-• Set stop losses based on support/resistance
-• Monitor leverage levels
-• Follow risk-reward ratios
+🔍 **SUPPORT/RESISTANCE**:
+📊 **Support Levels**: {', '.join([f'${level:.6f}' for level in market_conditions.get('support_levels', [])])}
+📈 **Resistance Levels**: {', '.join([f'${level:.6f}' for level in market_conditions.get('resistance_levels', [])])}
+
+⚠️ **SMART AI TRADING LOGIC**:
+• Momentum-based signal generation
+• Dynamic TP/SL calculation
+• Risk assessment and scoring
+• Market condition analysis
+• Support/Resistance detection
 
 ⚠️ **Risk Warning**: This is not financial advice. Always do your own research and manage risk properly.
             """.strip()

@@ -104,8 +104,15 @@ class Config:
     # === NOTIFICATIONS ===
     ENABLE_TELEGRAM = True
     ENABLE_CONSOLE_LOGS = True
-    ENABLE_EMAIL_ALERTS = False
+    ENABLE_EMAIL_ALERTS = True
     ENABLE_DISCORD_WEBHOOK = False
+    
+    # === EMAIL SETTINGS ===
+    EMAIL_SMTP_SERVER = os.getenv("EMAIL_SMTP_SERVER", "smtp.gmail.com")
+    EMAIL_SMTP_PORT = int(os.getenv("EMAIL_SMTP_PORT", "587"))
+    EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+    EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+    RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
     
     # === DATA RETENTION ===
     MAX_SIGNALS_STORED = 100
