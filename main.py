@@ -25,6 +25,7 @@ from admin_dashboard import AdminDashboard
 from advanced_indicators import InstitutionalZPlusPlus
 from chart_generator import ChartGenerator
 from advanced_arbitrage import AdvancedArbitrage
+from enhanced_trading_signals import EnhancedTradingSignals
 
 # Load environment variables
 load_dotenv()
@@ -83,6 +84,9 @@ class CryptoSniperBot:
         
         # Advanced arbitrage system
         self.arbitrage_system = AdvancedArbitrage()
+        
+        # Enhanced trading signals system
+        self.enhanced_signals = EnhancedTradingSignals()
         
         # Initialize bot
         self._setup_routes()
@@ -158,6 +162,7 @@ class CryptoSniperBot:
         self.scheduler.add_job(self.update_market_data, 'interval', minutes=Config.MARKET_DATA_UPDATE_INTERVAL)
         self.scheduler.add_job(self.analyze_markets, 'interval', minutes=Config.ANALYSIS_INTERVAL)
         self.scheduler.add_job(self.monitor_arbitrage, 'interval', minutes=1)  # Check arbitrage every minute
+        self.scheduler.add_job(self.monitor_enhanced_signals, 'interval', minutes=2)  # Check enhanced signals every 2 minutes
         self.scheduler.add_job(self.cleanup_old_data, 'interval', minutes=Config.CLEANUP_INTERVAL)
         self.scheduler.start()
         logger.info("Scheduler started")
@@ -704,6 +709,186 @@ class CryptoSniperBot:
                     
         except Exception as e:
             logger.error(f"Error updating exchange status: {e}")
+    
+    def monitor_enhanced_signals(self):
+        """Monitor enhanced trading signals (day trading, scalping, swing trading)"""
+        try:
+            for symbol in self.SYMBOLS:
+                for timeframe in ['1h', '4h', '15m']:  # Different timeframes for different strategies
+                    try:
+                        # Get market data
+                        if symbol in self.market_data and timeframe in self.market_data[symbol]:
+                            df = self.market_data[symbol][timeframe]
+                            
+                            if not df.empty and len(df) > 50:  # Ensure enough data
+                                # Generate enhanced signals
+                                signals = self.enhanced_signals.generate_all_signals(df, symbol)
+                                
+                                for signal in signals:
+                                    # Validate signal
+                                    if self._validate_enhanced_signal(signal):
+                                        # Process enhanced signal
+                                        self._process_enhanced_signal(signal)
+                                        
+                                        # Send Telegram notification
+                                        self.send_enhanced_telegram_signal(signal)
+                                        
+                    except Exception as e:
+                        logger.error(f"Error monitoring enhanced signals for {symbol} {timeframe}: {e}")
+                        
+        except Exception as e:
+            logger.error(f"Error monitoring enhanced signals: {e}")
+    
+    def _validate_enhanced_signal(self, signal: Dict) -> bool:
+        """Validate enhanced trading signal"""
+        try:
+            # Check required fields
+            required_fields = ['type', 'signal', 'symbol', 'price', 'confidence', 'leverage']
+            for field in required_fields:
+                if field not in signal:
+                    return False
+            
+            # Check confidence threshold
+            if signal['confidence'] < 50:
+                return False
+            
+            # Check if signal is recent (within last 5 minutes)
+            signal_time = signal.get('timestamp', datetime.now())
+            if (datetime.now() - signal_time).total_seconds() > 300:
+                return False
+            
+            # Check cooldown
+            signal_key = f"{signal['symbol']}_{signal['type']}"
+            if signal_key in self.signal_cooldowns:
+                last_signal_time = self.signal_cooldowns[signal_key]
+                if (datetime.now() - last_signal_time).total_seconds() < 1800:  # 30 minutes cooldown
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating enhanced signal: {e}")
+            return False
+    
+    def _process_enhanced_signal(self, signal: Dict):
+        """Process enhanced trading signal"""
+        try:
+            # Add to signals list
+            self.signals.append(signal)
+            
+            # Update cooldown
+            signal_key = f"{signal['symbol']}_{signal['type']}"
+            self.signal_cooldowns[signal_key] = datetime.now()
+            
+            # Track performance
+            if Config.ENABLE_PERFORMANCE_TRACKING:
+                self.performance_tracker.record_signal(signal)
+            
+            logger.info(f"Enhanced signal processed: {signal['type']} {signal['signal']} {signal['symbol']}")
+            
+        except Exception as e:
+            logger.error(f"Error processing enhanced signal: {e}")
+    
+    def send_enhanced_telegram_signal(self, signal: Dict):
+        """Send enhanced trading signal to Telegram"""
+        if not self.TELEGRAM_TOKEN or not self.TELEGRAM_CHAT_ID:
+            logger.warning("Telegram credentials not configured")
+            return
+        
+        try:
+            # Signal type emoji mapping
+            emoji_map = {
+                'DAY_TRADING': '📈',
+                'SCALPING': '⚡',
+                'SWING_TRADING': '📊'
+            }
+            
+            signal_emoji = emoji_map.get(signal['type'], '📊')
+            direction_emoji = '🟢' if signal['signal'] == 'LONG' else '🔴'
+            
+            # Support/Resistance levels
+            levels = signal.get('support_resistance', {})
+            support_levels = levels.get('support_levels', {})
+            resistance_levels = levels.get('resistance_levels', {})
+            
+            # Leverage info
+            leverage_info = signal.get('leverage', {})
+            
+            message = f"""
+{signal_emoji} **CRYPTOSNIPERXPRO {signal['type'].replace('_', ' ')} SIGNAL** {signal_emoji}
+
+{direction_emoji} **Signal**: {signal['signal']}
+🎯 **Symbol**: {signal['symbol']}
+💰 **Price**: ${signal['price']:.4f}
+📊 **Confidence**: {signal['confidence']}%
+⏰ **Timeframe**: {signal['timeframe']}
+⏰ **Time**: {signal['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}
+
+🔧 **Smart Leverage System**:
+• Leverage: {leverage_info.get('leverage', 1)}x
+• Level: {leverage_info.get('level', 'LOW')}
+• Max Leverage: {leverage_info.get('max_leverage', 1)}x
+
+📊 **Support Levels**:
+• S1: ${support_levels.get('s1', 0):.4f}
+• S2: ${support_levels.get('s2', 0):.4f}
+• MA20: ${support_levels.get('ma20', 0):.4f}
+• MA50: ${support_levels.get('ma50', 0):.4f}
+
+📈 **Resistance Levels**:
+• R1: ${resistance_levels.get('r1', 0):.4f}
+• R2: ${resistance_levels.get('r2', 0):.4f}
+• R3: ${resistance_levels.get('r3', 0):.4f}
+
+🔍 **Technical Indicators**:
+• RSI: {signal.get('indicators', {}).get('rsi', 0):.2f}
+• MACD: {signal.get('indicators', {}).get('macd', 0):.4f}
+• Volume Ratio: {signal.get('indicators', {}).get('volume_ratio', 0):.2f}
+• BB Position: {signal.get('indicators', {}).get('bb_position', 0):.2f}
+
+⚠️ **Risk Management**:
+• Use proper position sizing
+• Set stop losses based on support/resistance
+• Monitor leverage levels
+• Follow risk-reward ratios
+
+⚠️ **Risk Warning**: This is not financial advice. Always do your own research and manage risk properly.
+            """.strip()
+            
+            # Send text message
+            requests.post(
+                f"https://api.telegram.org/bot{self.TELEGRAM_TOKEN}/sendMessage",
+                json={
+                    "chat_id": self.TELEGRAM_CHAT_ID,
+                    "text": message,
+                    "parse_mode": "Markdown"
+                }
+            )
+            
+            # Generate and send chart if available
+            if Config.ENABLE_CHART_GENERATION:
+                try:
+                    chart_image = self.chart_generator.generate_signal_chart(
+                        signal['symbol'], signal['timeframe'], signal
+                    )
+                    if chart_image:
+                        import base64
+                        img_data = chart_image.split(',')[1]
+                        img_bytes = base64.b64decode(img_data)
+                        
+                        files = {'photo': ('signal.png', img_bytes, 'image/png')}
+                        requests.post(
+                            f"https://api.telegram.org/bot{self.TELEGRAM_TOKEN}/sendPhoto",
+                            data={"chat_id": self.TELEGRAM_CHAT_ID},
+                            files=files
+                        )
+                except Exception as e:
+                    logger.error(f"Error sending chart: {e}")
+            
+            logger.info(f"Enhanced Telegram signal sent for {signal['symbol']}")
+            
+        except Exception as e:
+            logger.error(f"Error sending enhanced Telegram signal: {e}")
     
     def cleanup_old_data(self):
         """Clean up old market data and signals"""
