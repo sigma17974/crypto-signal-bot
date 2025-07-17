@@ -22,6 +22,8 @@ from config import Config
 from utils import TechnicalAnalysis, SignalGenerator, DataValidator
 from performance import PerformanceTracker, PerformanceAnalyzer
 from admin_dashboard import AdminDashboard
+from advanced_indicators import InstitutionalZPlusPlus
+from chart_generator import ChartGenerator
 
 # Load environment variables
 load_dotenv()
@@ -71,6 +73,12 @@ class CryptoSniperBot:
         # Bot health tracking
         self.is_running = True
         self.start_time = datetime.now()
+        
+        # Advanced Z+++ indicators
+        self.z_plus_plus = InstitutionalZPlusPlus()
+        
+        # Chart generator
+        self.chart_generator = ChartGenerator()
         
         # Initialize bot
         self._setup_routes()
@@ -296,9 +304,28 @@ class CryptoSniperBot:
             return None
     
     def analyze_markets(self):
-        """Analyze all markets for sniper entries"""
-        logger.info("Starting market analysis...")
+        """Analyze all markets for sniper entries with Z+++ indicators"""
+        logger.info("Starting advanced market analysis with Z+++ indicators...")
         
+        # Get all types of signals
+        all_signals = self.z_plus_plus.get_all_signals()
+        
+        # Process momentum signals
+        for signal in all_signals.get('momentum_signals', []):
+            if self._validate_signal(signal):
+                self._process_advanced_signal(signal)
+        
+        # Process sentiment signals
+        for signal in all_signals.get('sentiment_signals', []):
+            if self._validate_signal(signal):
+                self._process_advanced_signal(signal)
+        
+        # Process arbitrage signals
+        for signal in all_signals.get('arbitrage_signals', []):
+            if self._validate_arbitrage_signal(signal):
+                self._process_arbitrage_signal(signal)
+        
+        # Traditional analysis for backup
         for symbol in self.SYMBOLS:
             for timeframe in self.TIMEFRAMES:
                 try:
@@ -316,10 +343,114 @@ class CryptoSniperBot:
                                 self.performance_tracker.record_signal(signal)
                             
                             self.send_telegram_signal(signal)
-                            logger.info(f"Generated signal for {symbol}: {signal['direction']}")
+                            logger.info(f"Generated traditional signal for {symbol}: {signal['direction']}")
                 
                 except Exception as e:
                     logger.error(f"Error analyzing {symbol} {timeframe}: {e}")
+    
+    def _validate_signal(self, signal: Dict) -> bool:
+        """Validate advanced signal"""
+        try:
+            # Check if signal is recent (within last 5 minutes)
+            signal_time = signal.get('timestamp', datetime.now())
+            if isinstance(signal_time, str):
+                signal_time = datetime.fromisoformat(signal_time.replace('Z', '+00:00'))
+            
+            time_diff = (datetime.now() - signal_time).total_seconds() / 60
+            if time_diff > 5:
+                return False
+            
+            # Check confidence
+            if signal.get('confidence', 0) < 70:
+                return False
+            
+            # Check if already processed
+            signal_id = f"{signal['symbol']}_{signal['type']}_{signal_time.strftime('%Y%m%d_%H%M')}"
+            if signal_id in self.signal_cooldowns:
+                return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating signal: {e}")
+            return False
+    
+    def _validate_arbitrage_signal(self, signal: Dict) -> bool:
+        """Validate arbitrage signal"""
+        try:
+            # Check profit percentage
+            if signal.get('profit_pct', 0) < 0.5:
+                return False
+            
+            # Check if recent
+            signal_time = signal.get('timestamp', datetime.now())
+            if isinstance(signal_time, str):
+                signal_time = datetime.fromisoformat(signal_time.replace('Z', '+00:00'))
+            
+            time_diff = (datetime.now() - signal_time).total_seconds() / 60
+            if time_diff > 2:  # Arbitrage signals must be very recent
+                return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating arbitrage signal: {e}")
+            return False
+    
+    def _process_advanced_signal(self, signal: Dict):
+        """Process advanced signal with chart"""
+        try:
+            # Get market data for chart
+            exchange = signal.get('exchange', 'binance')
+            symbol = signal['symbol']
+            
+            if exchange in self.z_plus_plus.market_data and symbol in self.z_plus_plus.market_data[exchange]:
+                df = self.z_plus_plus.market_data[exchange][symbol]
+                
+                # Generate chart
+                chart_image = self.chart_generator.generate_signal_chart(symbol, df, signal)
+                
+                # Add chart to signal
+                signal['chart_image'] = chart_image
+                
+                # Add to signals list
+                self.signals.append(signal)
+                self.signal_count += 1
+                
+                # Record in performance tracker
+                if Config.ENABLE_PERFORMANCE_TRACKING:
+                    self.performance_tracker.record_signal(signal)
+                
+                # Send to Telegram
+                self.send_advanced_telegram_signal(signal)
+                
+                # Update cooldown
+                signal_id = f"{signal['symbol']}_{signal['type']}_{signal['timestamp'].strftime('%Y%m%d_%H%M')}"
+                self.signal_cooldowns[signal_id] = datetime.now()
+                
+                logger.info(f"Generated advanced signal for {symbol}: {signal['type']}")
+            
+        except Exception as e:
+            logger.error(f"Error processing advanced signal: {e}")
+    
+    def _process_arbitrage_signal(self, signal: Dict):
+        """Process arbitrage signal"""
+        try:
+            # Generate arbitrage chart
+            chart_image = self.chart_generator.generate_arbitrage_chart(signal)
+            signal['chart_image'] = chart_image
+            
+            # Add to signals list
+            self.signals.append(signal)
+            self.signal_count += 1
+            
+            # Send to Telegram
+            self.send_arbitrage_telegram_signal(signal)
+            
+            logger.info(f"Generated arbitrage signal for {signal['symbol']}: {signal['profit_pct']:.2f}% profit")
+            
+        except Exception as e:
+            logger.error(f"Error processing arbitrage signal: {e}")
     
     def send_telegram_signal(self, signal: Dict):
         """Send trading signal to Telegram"""
@@ -375,6 +506,136 @@ class CryptoSniperBot:
             
         except Exception as e:
             logger.error(f"Error sending Telegram signal: {e}")
+    
+    def send_advanced_telegram_signal(self, signal: Dict):
+        """Send advanced signal to Telegram with chart"""
+        if not self.TELEGRAM_TOKEN or not self.TELEGRAM_CHAT_ID:
+            logger.warning("Telegram credentials not configured")
+            return
+        
+        try:
+            emoji_map = {
+                "MOMENTUM_LONG": "🚀",
+                "SENTIMENT_LONG": "📈",
+                "MOMENTUM_SHORT": "📉",
+                "SENTIMENT_SHORT": "🔻"
+            }
+            
+            signal_emoji = emoji_map.get(signal['type'], "📊")
+            
+            message = f"""
+{signal_emoji} **CRYPTOSNIPERXPRO ADVANCED SIGNAL** {signal_emoji}
+
+🎯 **Symbol:** {signal['symbol']}
+📊 **Type:** {signal['type']}
+💰 **Price:** ${signal['price']:.4f}
+📈 **Confidence:** {signal['confidence']}%
+⚡ **Strength:** {signal['strength']}
+⏰ **Time:** {signal['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}
+
+🔍 **Z+++ Analysis:**
+• Momentum Score: {signal.get('indicators', {}).get('momentum_score', 0):.3f}
+• Trend Strength: {signal.get('indicators', {}).get('trend_strength', 0):.3f}
+• Volume Score: {signal.get('indicators', {}).get('volume_score', 0):.3f}
+• Overall Score: {signal.get('indicators', {}).get('overall_score', 0):.3f}
+
+⚠️ **Risk Warning:** This is not financial advice. Always do your own research and manage risk properly.
+            """.strip()
+            
+            # Send text message
+            requests.post(
+                f"https://api.telegram.org/bot{self.TELEGRAM_TOKEN}/sendMessage",
+                json={
+                    "chat_id": self.TELEGRAM_CHAT_ID,
+                    "text": message,
+                    "parse_mode": "Markdown"
+                }
+            )
+            
+            # Send chart image if available
+            if signal.get('chart_image'):
+                try:
+                    # Convert base64 to image file
+                    import base64
+                    img_data = signal['chart_image'].split(',')[1]
+                    img_bytes = base64.b64decode(img_data)
+                    
+                    # Send photo
+                    files = {'photo': ('chart.png', img_bytes, 'image/png')}
+                    requests.post(
+                        f"https://api.telegram.org/bot{self.TELEGRAM_TOKEN}/sendPhoto",
+                        data={"chat_id": self.TELEGRAM_CHAT_ID},
+                        files=files
+                    )
+                except Exception as e:
+                    logger.error(f"Error sending chart image: {e}")
+            
+            logger.info(f"Advanced Telegram signal sent for {signal['symbol']}")
+            
+        except Exception as e:
+            logger.error(f"Error sending advanced Telegram signal: {e}")
+    
+    def send_arbitrage_telegram_signal(self, signal: Dict):
+        """Send arbitrage signal to Telegram"""
+        if not self.TELEGRAM_TOKEN or not self.TELEGRAM_CHAT_ID:
+            logger.warning("Telegram credentials not configured")
+            return
+        
+        try:
+            message = f"""
+💰 **CRYPTOSNIPERXPRO ARBITRAGE OPPORTUNITY** 💰
+
+🎯 **Symbol:** {signal['symbol']}
+📊 **Buy Exchange:** {signal['buy_exchange'].upper()}
+📈 **Sell Exchange:** {signal['sell_exchange'].upper()}
+💵 **Buy Price:** ${signal['buy_price']:.4f}
+💸 **Sell Price:** ${signal['sell_price']:.4f}
+📈 **Profit:** {signal['profit_pct']:.2f}%
+⏰ **Time:** {signal['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}
+
+🔍 **Arbitrage Analysis:**
+• Price Difference: ${signal['sell_price'] - signal['buy_price']:.4f}
+• Profit Potential: {signal['profit_pct']:.2f}%
+• Risk Level: LOW (Price difference only)
+
+⚠️ **Important:** 
+• Execute quickly as arbitrage opportunities disappear fast
+• Consider trading fees in profit calculation
+• Monitor for slippage during execution
+
+⚠️ **Risk Warning:** This is not financial advice. Arbitrage involves execution risk.
+            """.strip()
+            
+            # Send text message
+            requests.post(
+                f"https://api.telegram.org/bot{self.TELEGRAM_TOKEN}/sendMessage",
+                json={
+                    "chat_id": self.TELEGRAM_CHAT_ID,
+                    "text": message,
+                    "parse_mode": "Markdown"
+                }
+            )
+            
+            # Send chart image if available
+            if signal.get('chart_image'):
+                try:
+                    import base64
+                    img_data = signal['chart_image'].split(',')[1]
+                    img_bytes = base64.b64decode(img_data)
+                    
+                    files = {'photo': ('arbitrage.png', img_bytes, 'image/png')}
+                    requests.post(
+                        f"https://api.telegram.org/bot{self.TELEGRAM_TOKEN}/sendPhoto",
+                        data={"chat_id": self.TELEGRAM_CHAT_ID},
+                        files=files
+                    )
+                except Exception as e:
+                    logger.error(f"Error sending arbitrage chart: {e}")
+            
+            logger.info(f"Arbitrage Telegram signal sent for {signal['symbol']}")
+            
+        except Exception as e:
+            logger.error(f"Error sending arbitrage Telegram signal: {e}")
     
     def cleanup_old_data(self):
         """Clean up old market data and signals"""

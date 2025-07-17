@@ -62,9 +62,20 @@ class Config:
     BB_SQUEEZE_THRESHOLD = 0.1  # Tight squeeze
     
     # === SIGNAL FILTERS ===
-    MIN_CONFIDENCE = 40  # Minimum confidence percentage
+    MIN_CONFIDENCE = 70  # Minimum confidence percentage - Increased for Z+++ quality
     MAX_SIGNALS_PER_SYMBOL = 3  # Max signals per symbol per hour
     SIGNAL_COOLDOWN_MINUTES = 30  # Minutes between signals for same symbol
+    
+    # === Z+++ ADVANCED SETTINGS ===
+    ENABLE_Z_PLUS_PLUS = True  # Enable institutional-grade Z+++ indicators
+    ENABLE_MOMENTUM_SIGNALS = True  # Enable momentum trading signals
+    ENABLE_SENTIMENT_SIGNALS = True  # Enable sentiment-based signals
+    ENABLE_ARBITRAGE_SIGNALS = True  # Enable arbitrage detection
+    MIN_ARBITRAGE_PROFIT = 0.5  # Minimum arbitrage profit percentage
+    ENABLE_CHARTS = True  # Enable real-time chart generation
+    CONSOLIDATION_FILTER = True  # Filter out consolidation zones
+    CHOPPY_MARKET_FILTER = True  # Filter out choppy markets
+    SIDEWAYS_MARKET_FILTER = True  # Filter out sideways markets
     
     # === ADVANCED FEATURES ===
     ENABLE_WHALE_TRACKING = True

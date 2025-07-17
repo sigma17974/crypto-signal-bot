@@ -11,3 +11,5 @@ websocket-client
 python-dotenv
 python-telegram-bot
 psutil
+plotly
+kaleido
