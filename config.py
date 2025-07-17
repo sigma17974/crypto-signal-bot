@@ -3,7 +3,10 @@ Configuration file for Crypto Sniper Bot
 """
 
 import os
-from typing import List
+from typing import Dict, List
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Config:
     """Bot configuration settings"""
@@ -11,11 +14,11 @@ class Config:
     # === BOT IDENTITY ===
     BOT_NAME = "CryptoSniperXProBot"
     BOT_VERSION = "2.1.0"
-    BOT_DESCRIPTION = "Advanced Crypto Trading Bot with Real-time Sniper Entry Detection"
+    BOT_DESCRIPTION = "Advanced Institutional-Grade Crypto Sniper Bot"
     
     # === TELEGRAM SETTINGS ===
-    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+    TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
+    TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
     TELEGRAM_BOT_USERNAME = "crypto_sniper_pro_bot"  # Your bot username
     
     # === EXCHANGE SETTINGS ===
@@ -331,3 +334,98 @@ class Config:
             return False
         
         return True
+
+    @classmethod
+    def validate_config(cls):
+        """Validate configuration settings"""
+        errors = []
+        
+        # Check required settings
+        if not cls.TELEGRAM_BOT_TOKEN:
+            errors.append("TELEGRAM_BOT_TOKEN is required")
+        if not cls.TELEGRAM_CHAT_ID:
+            errors.append("TELEGRAM_CHAT_ID is required")
+        
+        # Validate lists
+        if not cls.DYNAMIC_SYMBOLS:
+            errors.append("DYNAMIC_SYMBOLS cannot be empty")
+        if not cls.DYNAMIC_TIMEFRAMES:
+            errors.append("DYNAMIC_TIMEFRAMES cannot be empty")
+        
+        # Validate percentages
+        if cls.MIN_PROFIT_POTENTIAL < 0:
+            errors.append("MIN_PROFIT_POTENTIAL must be positive")
+        if cls.MAX_RISK_SCORE <1or cls.MAX_RISK_SCORE > 10:
+            errors.append("MAX_RISK_SCORE must be between 1 and 10")
+        
+        return errors
+    
+    @classmethod
+    def get_session_info(cls):
+        """Get current session information"""
+        from datetime import datetime, time
+        import pytz
+        
+        utc_now = datetime.now(pytz.UTC)
+        current_hour = utc_now.hour
+        
+        if cls.ACTIVE_SESSION == 'auto':
+            if 0 <= current_hour < 8:
+                return 'asian'
+            elif 8 <= current_hour < 16:
+                return 'london'
+            elif 13 <= current_hour < 21:
+                return 'newyork'
+            else:
+                return 'manual'
+        else:
+            return cls.ACTIVE_SESSION
+    
+    @classmethod
+    def is_trading_session_active(cls):
+        """If current trading session is active"""
+        session = cls.get_session_info()
+        if session == 'manual':
+            return True
+        
+        from datetime import datetime, time
+        import pytz
+        
+        utc_now = datetime.now(pytz.UTC)
+        current_time = utc_now.time()
+        
+        if session in cls.SESSION_TIMES:
+            session_times = cls.SESSION_TIMES[session]
+            start_time = datetime.strptime(session_times['start'], '%H:%M').time()
+            end_time = datetime.strptime(session_times['end'], '%H:%M').time()
+            
+            return start_time <= current_time <= end_time
+        
+        return True
+    
+    @classmethod
+    def get_theme_colors(cls):
+        """Get current theme colors"""
+        if cls.ACTIVE_COLOR_THEME == 'light':
+            return {
+                'background': '#f5f5f5',
+                'card': '#ffffff',
+                'text': '#333333',
+                'accent': '#099ff'
+            }
+        elif cls.ACTIVE_COLOR_THEME == 'dark':
+            return {
+                'background': '#1a1a1a',
+                'card': '#2d2d2d',
+                'text': '#ffffff',
+                'accent': '#099ff'
+            }
+        elif cls.ACTIVE_COLOR_THEME == 'custom':
+            return cls.CUSTOM_COLORS
+        else:  # dynamic
+            return {
+                'background': '#181818',
+                'card': '#23272e',
+                'text': '#ffffff',
+                'accent': '#099ff'
+            }
