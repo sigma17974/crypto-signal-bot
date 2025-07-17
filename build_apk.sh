@@ -1,3 +1,12 @@
+#!/bin/bash
+
+echo "Building CryptoSniperXProBot APK..."
+
+# Install buildozer
+pip install buildozer
+
+# Create mobile app file
+cat > mobile_app.py << 'EOF'
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -118,3 +127,10 @@ class CryptoSniperApp(App):
 
 if __name__ == '__main__':
     CryptoSniperApp().run()
+EOF
+
+# Build APK
+buildozer android debug
+
+echo "APK built successfully!"
+echo "APK location: bin/cryptosniperxprobot-2.0.0-debug.apk"
